@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_shell.dart';
+import '../../../core/storage/storage_service.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  final StorageService storageService;
+
+  const HomePage({
+    super.key,
+    required this.storageService,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const AppShell();
+    return AppShell(storageService: storageService);
   }
 }

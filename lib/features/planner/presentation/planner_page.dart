@@ -3,12 +3,65 @@ import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
+import '../../../core/storage/storage_service.dart';
+import '../domain/planner_event.dart';
 
-class PlannerPage extends StatelessWidget {
-  const PlannerPage({super.key});
+class PlannerPage extends StatefulWidget {
+  final StorageService storageService;
+
+  const PlannerPage({
+    super.key,
+    required this.storageService,
+  });
+
+  @override
+  State<PlannerPage> createState() => _PlannerPageState();
+}
+
+class _PlannerPageState extends State<PlannerPage> {
+  List<PlannerEvent> _events = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      final events = await widget.storageService.loadPlanner();
+      if (events.isEmpty) {
+        // Seed initial data if empty for MVP feel
+        final initialEvents = [
+          PlannerEvent.create(time: '09:00 AM', title: 'Gym', color: Colors.blue),
+          PlannerEvent.create(time: '11:00 AM', title: 'Flutter Development', color: Colors.orange),
+          PlannerEvent.create(time: '03:00 PM', title: 'Study', color: Colors.purple),
+          PlannerEvent.create(time: '08:00 PM', title: 'Family Time', color: Colors.green),
+        ];
+        await widget.storageService.savePlanner(initialEvents);
+        _events = await widget.storageService.loadPlanner();
+      } else {
+        _events = events;
+      }
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load planner')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
@@ -39,6 +92,7 @@ class PlannerPage extends StatelessWidget {
   }
 
   Widget _buildDateHeader(TextTheme textTheme, ColorScheme colorScheme) {
+    // Standard static date for MVP
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -60,19 +114,12 @@ class PlannerPage extends StatelessWidget {
   }
 
   Widget _buildScheduleList(TextTheme textTheme, ColorScheme colorScheme) {
-    final events = [
-      _EventData('09:00 AM', 'Gym', colorScheme.primary),
-      _EventData('11:00 AM', 'Flutter Development', Colors.orange),
-      _EventData('03:00 PM', 'Study', Colors.purple),
-      _EventData('08:00 PM', 'Family Time', Colors.green),
-    ];
-
     return Column(
-      children: events.map((event) => _buildEventCard(event, textTheme, colorScheme)).toList(),
+      children: _events.map((event) => _buildEventCard(event, textTheme, colorScheme)).toList(),
     );
   }
 
-  Widget _buildEventCard(_EventData event, TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildEventCard(PlannerEvent event, TextTheme textTheme, ColorScheme colorScheme) {
     return Padding(
       padding: const EdgeInsets.only(bottom: OrbitSpacing.md),
       child: Container(
@@ -137,12 +184,4 @@ class PlannerPage extends StatelessWidget {
           .toList(),
     );
   }
-}
-
-class _EventData {
-  final String time;
-  final String title;
-  final Color color;
-
-  _EventData(this.time, this.title, this.color);
 }

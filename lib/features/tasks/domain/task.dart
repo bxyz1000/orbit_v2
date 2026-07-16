@@ -1,23 +1,30 @@
-class Task {
-  final String id;
-  final String title;
-  final bool completed;
+import 'package:isar_community/isar_community.dart';
 
-  Task({
-    required this.id,
+part 'task.g.dart';
+
+@collection
+class Task {
+  Id id = Isar.autoIncrement;
+  
+  late String title;
+  late bool completed;
+
+  Task();
+
+  Task.create({
     required this.title,
     this.completed = false,
   });
 
   Task copyWith({
-    String? id,
+    Id? id,
     String? title,
     bool? completed,
   }) {
-    return Task(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      completed: completed ?? this.completed,
-    );
+    final task = Task()
+      ..id = id ?? this.id
+      ..title = title ?? this.title
+      ..completed = completed ?? this.completed;
+    return task;
   }
 }

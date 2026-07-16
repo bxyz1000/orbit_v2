@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import '../core/storage/storage_service.dart';
 import '../features/home/presentation/today_page.dart';
 import '../features/tasks/presentation/tasks_page.dart';
 import '../features/planner/presentation/planner_page.dart';
 import '../features/profile/presentation/profile_page.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final StorageService storageService;
+
+  const AppShell({
+    super.key,
+    required this.storageService,
+  });
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -14,12 +20,18 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = [
-    TodayPage(),
-    TasksPage(),
-    PlannerPage(),
-    ProfilePage(),
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      TodayPage(storageService: widget.storageService),
+      TasksPage(storageService: widget.storageService),
+      PlannerPage(storageService: widget.storageService),
+      const ProfilePage(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {

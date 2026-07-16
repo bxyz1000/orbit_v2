@@ -1,44 +1,58 @@
 import 'package:flutter/material.dart';
 import '../domain/note.dart';
+import '../../../core/storage/storage_service.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_search_bar.dart';
 
 class NotesPage extends StatefulWidget {
-  const NotesPage({super.key});
+  final StorageService storageService;
+
+  const NotesPage({
+    super.key,
+    required this.storageService,
+  });
 
   @override
   State<NotesPage> createState() => _NotesPageState();
 }
 
 class _NotesPageState extends State<NotesPage> {
-  final List<Note> _notes = [
-    Note(
-      id: '1',
-      title: 'Project Ideas',
-      content: '1. Build a personal OS\n2. Create a productivity app\n3. Learn Flutter deeper',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Note(
-      id: '2',
-      title: 'Grocery List',
-      content: 'Milk, Eggs, Bread, Coffee, Fruits',
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-    ),
-    Note(
-      id: '3',
-      title: 'App Feedback',
-      content: 'The dashboard looks great. Need to add persistence next.',
-      createdAt: DateTime.now(),
-    ),
-  ];
+  List<Note> _notes = [];
+  bool _isLoading = true;
 
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _searchController = TextEditingController();
   
   String _searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    try {
+      final notes = await widget.storageService.loadNotes();
+      setState(() {
+        _notes = notes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      _showError('Failed to load notes');
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
+      );
+    }
+  }
 
   void _addNote() {
     showDialog(
@@ -85,44 +99,46 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
-  void _submitNote() {
+  void _submitNote() async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
     if (title.isNotEmpty) {
-      setState(() {
-        _notes.add(
-          Note(
-            id: DateTime.now().toString(),
-            title: title,
-            content: content,
-            createdAt: DateTime.now(),
-          ),
-        );
-      });
-      _clearControllers();
-      Navigator.pop(context);
+      final newNote = Note()..title = title..content = content..createdAt = DateTime.now();
+      try {
+        await widget.storageService.saveNotes([newNote]);
+        _clearControllers();
+        if (mounted) Navigator.pop(context);
+        _loadNotes();
+      } catch (e) {
+        _showError('Failed to save note');
+      }
     }
   }
 
-  void _deleteNote(Note note) {
-    setState(() {
-      _notes.remove(note);
-    });
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Note deleted'),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            setState(() {
-              _notes.add(note);
-            });
-          },
-        ),
-      ),
-    );
+  void _deleteNote(Note note) async {
+    try {
+      await widget.storageService.deleteNote(note.id);
+      _loadNotes();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Note deleted'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                await widget.storageService.saveNotes([note]);
+                _loadNotes();
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('Failed to delete note');
+    }
   }
 
   void _clearControllers() {
@@ -148,6 +164,10 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

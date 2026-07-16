@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../domain/task.dart';
-import '../domain/task_service.dart';
+import '../../../core/storage/storage_service.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
@@ -11,19 +11,52 @@ import '../../../shared/widgets/orbit_search_bar.dart';
 enum TaskFilter { all, active, completed }
 
 class TasksPage extends StatefulWidget {
-  const TasksPage({super.key});
+  final StorageService storageService;
+
+  const TasksPage({
+    super.key,
+    required this.storageService,
+  });
 
   @override
   State<TasksPage> createState() => _TasksPageState();
 }
 
 class _TasksPageState extends State<TasksPage> {
-  final List<Task> _tasks = TaskService().tasks;
+  List<Task> _tasks = [];
+  bool _isLoading = true;
+
   final TextEditingController _taskController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   
   String _searchQuery = "";
   TaskFilter _currentFilter = TaskFilter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    try {
+      final tasks = await widget.storageService.loadTasks();
+      setState(() {
+        _tasks = tasks;
+        _isLoading = false;
+      });
+    } catch (e) {
+      _showError('Failed to load tasks');
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
+      );
+    }
+  }
 
   void _addTask() {
     showDialog(
@@ -55,50 +88,55 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  void _submitTask() {
+  void _submitTask() async {
     final title = _taskController.text.trim();
     if (title.isNotEmpty) {
-      setState(() {
-        _tasks.add(
-          Task(
-            id: DateTime.now().toString(),
-            title: title,
-          ),
-        );
-      });
-      _taskController.clear();
-      Navigator.pop(context);
+      final newTask = Task()..title = title..completed = false;
+      try {
+        await widget.storageService.saveTasks([newTask]);
+        _taskController.clear();
+        if (mounted) Navigator.pop(context);
+        _loadTasks();
+      } catch (e) {
+        _showError('Failed to save task');
+      }
     }
   }
 
-  void _toggleTask(Task task) {
-    setState(() {
-      final index = _tasks.indexOf(task);
-      if (index != -1) {
-        _tasks[index] = task.copyWith(completed: !task.completed);
-      }
-    });
+  void _toggleTask(Task task) async {
+    final updatedTask = task.copyWith(completed: !task.completed);
+    try {
+      await widget.storageService.saveTasks([updatedTask]);
+      _loadTasks();
+    } catch (e) {
+      _showError('Failed to update task');
+    }
   }
 
-  void _deleteTask(Task task) {
-    setState(() {
-      _tasks.remove(task);
-    });
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Task deleted'),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            setState(() {
-              _tasks.add(task);
-            });
-          },
-        ),
-      ),
-    );
+  void _deleteTask(Task task) async {
+    try {
+      await widget.storageService.deleteTask(task.id);
+      _loadTasks();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Task deleted'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                await widget.storageService.saveTasks([task]);
+                _loadTasks();
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('Failed to delete task');
+    }
   }
 
   @override
@@ -110,12 +148,16 @@ class _TasksPageState extends State<TasksPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final completedCount = TaskService().completedCount;
+    final completedCount = _tasks.where((t) => t.completed).length;
     final totalCount = _tasks.length;
-    final progress = TaskService().completionPercentage;
+    final progress = totalCount == 0 ? 0.0 : completedCount / totalCount;
 
     List<Task> filteredTasks = _tasks.where((task) {
       final matchesSearch = task.title.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -238,7 +280,7 @@ class _TasksPageState extends State<TasksPage> {
       key: ValueKey(task.id),
       padding: const EdgeInsets.only(bottom: OrbitSpacing.md),
       child: Dismissible(
-        key: Key(task.id),
+        key: Key(task.id.toString()),
         direction: DismissDirection.endToStart,
         onDismissed: (_) => _deleteTask(task),
         background: Container(

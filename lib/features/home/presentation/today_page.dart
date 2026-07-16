@@ -7,18 +7,25 @@ import '../../../shared/widgets/orbit_stat_card.dart';
 import '../../../shared/widgets/orbit_action_card.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
-import '../../tasks/domain/task_service.dart';
+import '../../../core/storage/storage_service.dart';
+import '../../tasks/domain/task.dart';
 
 class TodayPage extends StatefulWidget {
-  const TodayPage({super.key});
+  final StorageService storageService;
+
+  const TodayPage({
+    super.key,
+    required this.storageService,
+  });
 
   @override
   State<TodayPage> createState() => _TodayPageState();
 }
 
 class _TodayPageState extends State<TodayPage> {
-  final TaskService _taskService = TaskService();
+  List<Task> _tasks = [];
   late final String _quote;
+  bool _isLoading = true;
 
   final List<String> _quotes = const [
     "The secret of getting ahead is getting started.",
@@ -37,6 +44,17 @@ class _TodayPageState extends State<TodayPage> {
   void initState() {
     super.initState();
     _quote = _quotes[Random().nextInt(_quotes.length)];
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    final tasks = await widget.storageService.loadTasks();
+    if (mounted) {
+      setState(() {
+        _tasks = tasks;
+        _isLoading = false;
+      });
+    }
   }
 
   String _getGreeting() {
@@ -60,13 +78,17 @@ class _TodayPageState extends State<TodayPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    final remainingTasks = _taskService.remainingCount;
-    final completedTasks = _taskService.completedCount;
-    final completionPct = (_taskService.completionPercentage * 100).toInt();
+    final completedCount = _tasks.where((t) => t.completed).length;
+    final remainingCount = _tasks.length - completedCount;
+    final completionPct = _tasks.isEmpty ? 0 : (completedCount * 100 ~/ _tasks.length);
 
     return Scaffold(
       body: SafeArea(
@@ -79,7 +101,7 @@ class _TodayPageState extends State<TodayPage> {
               const SizedBox(height: OrbitSpacing.xxl),
               const OrbitSectionHeader(title: "Today's Focus"),
               const SizedBox(height: OrbitSpacing.lg),
-              _buildFocusCard(textTheme, colorScheme, remainingTasks),
+              _buildFocusCard(textTheme, colorScheme, remainingCount),
               const SizedBox(height: OrbitSpacing.xxl),
               const OrbitSectionHeader(title: "Quick Actions"),
               const SizedBox(height: OrbitSpacing.lg),
@@ -87,7 +109,7 @@ class _TodayPageState extends State<TodayPage> {
               const SizedBox(height: OrbitSpacing.xxl),
               const OrbitSectionHeader(title: "Today's Progress"),
               const SizedBox(height: OrbitSpacing.lg),
-              _buildProgressStats(theme, completedTasks, remainingTasks, completionPct),
+              _buildProgressStats(theme, completedCount, remainingCount, completionPct),
               const SizedBox(height: OrbitSpacing.xxl),
               const OrbitSectionHeader(title: "Motivation"),
               const SizedBox(height: OrbitSpacing.lg),
