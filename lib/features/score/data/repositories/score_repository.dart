@@ -1,7 +1,10 @@
-import 'package:isar_community/isar_community.dart';
+import 'package:isar_community/isar.dart';
 import '../../domain/entities/daily_score.dart';
 import '../../domain/entities/weekly_score.dart';
 import '../../domain/entities/monthly_score.dart';
+import '../models/daily_score_model.dart';
+import '../models/weekly_score_model.dart';
+import '../models/monthly_score_model.dart';
 
 /// Data layer for persisting and retrieving Orbit Scores.
 class ScoreRepository {
@@ -12,39 +15,42 @@ class ScoreRepository {
   /// Retrieves the DailyScore for a specific date.
   Future<DailyScore?> getDailyScore(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
-    return await _isar.dailyScores.filter().dateEqualTo(startOfDay).findFirst();
+    final model = await _isar.dailyScoreModels.filter().dateEqualTo(startOfDay).findFirst();
+    return model?.toEntity();
   }
 
   /// Saves or updates a DailyScore. 
-  /// Note: Business logic in Service layer ensures finalized scores remain immutable.
   Future<void> saveDailyScore(DailyScore score) async {
+    final model = DailyScoreModel.fromEntity(score);
     await _isar.writeTxn(() async {
-      await _isar.dailyScores.put(score);
+      await _isar.dailyScoreModels.put(model);
     });
   }
 
   /// Retrieves the WeeklyScore for a given week start date.
   Future<WeeklyScore?> getWeeklyScore(DateTime weekStart) async {
     final normalized = DateTime(weekStart.year, weekStart.month, weekStart.day);
-    return await _isar.weeklyScores.filter().weekStartDateEqualTo(normalized).findFirst();
+    final model = await _isar.weeklyScoreModels.filter().weekStartDateEqualTo(normalized).findFirst();
+    return model?.toEntity();
   }
 
   /// Retrieves the MonthlyScore for a given month start date.
   Future<MonthlyScore?> getMonthlyScore(DateTime monthStart) async {
     final normalized = DateTime(monthStart.year, monthStart.month, 1);
-    return await _isar.monthlyScores.filter().monthStartDateEqualTo(normalized).findFirst();
+    final model = await _isar.monthlyScoreModels.filter().monthStartDateEqualTo(normalized).findFirst();
+    return model?.toEntity();
   }
 
   /// Streams updates for a specific day's score.
   Stream<DailyScore?> streamDailyScore(DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day);
-    return _isar.dailyScores
+    return _isar.dailyScoreModels
         .filter()
         .dateEqualTo(startOfDay)
         .watch(fireImmediately: true)
-        .map((scores) => scores.isNotEmpty ? scores.first : null);
+        .map((models) => models.isNotEmpty ? models.first.toEntity() : null);
   }
 
   /// Watches for any changes in the daily scores collection.
-  Stream<void> watchAllScores() => _isar.dailyScores.watchLazy();
+  Stream<void> watchAllScores() => _isar.dailyScoreModels.watchLazy();
 }

@@ -1,30 +1,52 @@
-import 'package:isar_community/isar_community.dart';
-
-part 'achievement.g.dart';
-
-@collection
 class Achievement {
-  Id id = Isar.autoIncrement;
+  final String achievementId;
+  final String title;
+  final String description;
+  final String category;
+  final String tier;
+  final bool isUnlocked;
+  final DateTime? unlockedAt;
 
-  @Index(unique: true, replace: true)
-  late String achievementId; // e.g., 'first_task', '7_day_streak'
-  
-  late String title;
-  late String description;
-  late String category; // Architect, Warrior, Monk, Operator
-  late String tier; // Bronze, Silver, Gold, Orbit Platinum
-  
-  late bool isUnlocked;
-  DateTime? unlockedAt;
-
-  Achievement();
-
-  Achievement.create({
+  Achievement({
     required this.achievementId,
     required this.title,
     required this.description,
     required this.category,
     required this.tier,
     this.isUnlocked = false,
+    this.unlockedAt,
   });
+
+  Achievement copyWith({
+    bool? isUnlocked,
+    DateTime? unlockedAt,
+  }) {
+    return Achievement(
+      achievementId: achievementId,
+      title: title,
+      description: description,
+      category: category,
+      tier: tier,
+      isUnlocked: isUnlocked ?? this.isUnlocked,
+      unlockedAt: unlockedAt ?? this.unlockedAt,
+    );
+  }
+
+  static Achievement create({
+    required String achievementId,
+    required String title,
+    required String description,
+    required String category,
+    required String tier,
+    bool isUnlocked = false,
+  }) {
+    return Achievement(
+      achievementId: achievementId,
+      title: title,
+      description: description,
+      category: category,
+      tier: tier,
+      isUnlocked: isUnlocked,
+    );
+  }
 }

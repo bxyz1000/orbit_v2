@@ -1,5 +1,6 @@
-import 'package:isar_community/isar_community.dart';
+import 'package:isar_community/isar.dart';
 import '../../domain/entities/personal_record.dart';
+import '../models/personal_record_model.dart';
 
 /// Data layer for managing Personal Records.
 class PersonalRecordRepository {
@@ -9,18 +10,26 @@ class PersonalRecordRepository {
 
   /// Retrieves a specific personal record by type.
   Future<PersonalRecord?> getRecord(String type) async {
-    return await _isar.personalRecords.filter().recordTypeEqualTo(type).findFirst();
+    final model = await _isar.personalRecordModels.filter().recordTypeEqualTo(type).findFirst();
+    return model?.toEntity();
   }
 
   /// Retrieves all personal records.
   Future<List<PersonalRecord>> getAllRecords() async {
-    return await _isar.personalRecords.where().findAll();
+    final models = await _isar.personalRecordModels.where().findAll();
+    return models.map((m) => m.toEntity()).toList();
   }
 
   /// Saves or updates a personal record.
   Future<void> saveRecord(PersonalRecord record) async {
+    final model = PersonalRecordModel.fromEntity(record);
+    // Note: To support updates, we'd need to find the ID first or handle it in fromEntity if we passed the ID.
+    // For simplicity here, we assume record type is unique and we find by type.
+    final existing = await _isar.personalRecordModels.filter().recordTypeEqualTo(record.recordType).findFirst();
+    if (existing != null) model.id = existing.id;
+    
     await _isar.writeTxn(() async {
-      await _isar.personalRecords.put(record);
+      await _isar.personalRecordModels.put(model);
     });
   }
 
@@ -33,11 +42,10 @@ class PersonalRecordRepository {
         value: newValue,
         achievedAt: date,
       );
-      if (existing != null) updated.id = existing.id;
       await saveRecord(updated);
     }
   }
 
   /// Watches all personal records for changes.
-  Stream<void> watchRecords() => _isar.personalRecords.watchLazy();
+  Stream<void> watchRecords() => _isar.personalRecordModels.watchLazy();
 }

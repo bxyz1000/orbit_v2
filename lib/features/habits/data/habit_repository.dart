@@ -1,4 +1,4 @@
-import 'package:isar_community/isar_community.dart';
+import 'package:isar_community/isar.dart';
 import '../domain/habit.dart';
 import '../domain/habit_completion.dart';
 

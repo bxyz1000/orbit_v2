@@ -1,61 +1,103 @@
-import 'package:isar_community/isar_community.dart';
-
-part 'daily_score.g.dart';
-
-/// Represents the finalized Orbit Score for a specific day.
-@collection
 class DailyScore {
-  Id id = Isar.autoIncrement;
+  final DateTime date;
+  final int totalScore;
+  final int taskScore;
+  final int plannerScore;
+  final int habitScore;
+  final int focusScore;
+  final int stepsScore;
+  final int workoutScore;
+  final int sleepScore;
+  final int goalScore;
+  final int consistencyScore;
+  final int bonusScore;
+  final int penaltyScore;
+  final String scoreVersion;
+  final bool isFinalized;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  /// The date this score belongs to (normalized to 00:00:00).
-  @Index(unique: true, replace: true)
-  late DateTime date;
-
-  /// Total combined score for the day.
-  late int totalScore;
-
-  // Breakdown fields as per v1.1 documentation
-  late int taskScore;
-  late int plannerScore;
-  late int habitScore;
-  late int focusScore;
-  late int stepsScore;
-  late int workoutScore;
-  late int sleepScore;
-  late int goalScore;
-  late int consistencyScore;
-  late int bonusScore;
-  late int penaltyScore;
-
-  /// The version of the scoring engine used to calculate this score.
-  late String scoreVersion;
-
-  /// Whether the score has been finalized (locked at 11:59:59 PM).
-  late bool isFinalized;
-
-  late DateTime createdAt;
-  late DateTime updatedAt;
-
-  DailyScore();
-
-  DailyScore.create({
+  DailyScore({
     required this.date,
-    this.totalScore = 0,
-    this.taskScore = 0,
-    this.plannerScore = 0,
-    this.habitScore = 0,
-    this.focusScore = 0,
-    this.stepsScore = 0,
-    this.workoutScore = 0,
-    this.sleepScore = 0,
-    this.goalScore = 0,
-    this.consistencyScore = 0,
-    this.bonusScore = 0,
-    this.penaltyScore = 0,
-    this.scoreVersion = '1.1',
-    this.isFinalized = false,
+    required this.totalScore,
+    required this.taskScore,
+    required this.plannerScore,
+    required this.habitScore,
+    required this.focusScore,
+    required this.stepsScore,
+    required this.workoutScore,
+    required this.sleepScore,
+    required this.goalScore,
+    required this.consistencyScore,
+    required this.bonusScore,
+    required this.penaltyScore,
+    required this.scoreVersion,
+    required this.isFinalized,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  DailyScore copyWith({
+    bool? isFinalized,
+    DateTime? updatedAt,
   }) {
-    createdAt = DateTime.now();
-    updatedAt = DateTime.now();
+    return DailyScore(
+      date: date,
+      totalScore: totalScore,
+      taskScore: taskScore,
+      plannerScore: plannerScore,
+      habitScore: habitScore,
+      focusScore: focusScore,
+      stepsScore: stepsScore,
+      workoutScore: workoutScore,
+      sleepScore: sleepScore,
+      goalScore: goalScore,
+      consistencyScore: consistencyScore,
+      bonusScore: bonusScore,
+      penaltyScore: penaltyScore,
+      scoreVersion: scoreVersion,
+      isFinalized: isFinalized ?? this.isFinalized,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  static DailyScore create({
+    required DateTime date,
+    int totalScore = 0,
+    int taskScore = 0,
+    int plannerScore = 0,
+    int habitScore = 0,
+    int focusScore = 0,
+    int stepsScore = 0,
+    int workoutScore = 0,
+    int sleepScore = 0,
+    int goalScore = 0,
+    int consistencyScore = 0,
+    int bonusScore = 0,
+    int penaltyScore = 0,
+    String scoreVersion = '1.1',
+    bool isFinalized = false,
+  }) {
+    final now = DateTime.now();
+    return DailyScore(
+      date: date,
+      totalScore: totalScore,
+      taskScore: taskScore,
+      plannerScore: plannerScore,
+      habitScore: habitScore,
+      focusScore: focusScore,
+      stepsScore: stepsScore,
+      workoutScore: workoutScore,
+      sleepScore: sleepScore,
+      goalScore: goalScore,
+      consistencyScore: consistencyScore,
+      bonusScore: bonusScore,
+      penaltyScore: penaltyScore,
+      scoreVersion: scoreVersion,
+      isFinalized: isFinalized,
+      createdAt: now,
+      updatedAt: now,
+    );
   }
 }

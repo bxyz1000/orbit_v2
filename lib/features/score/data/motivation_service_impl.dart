@@ -108,15 +108,16 @@ class MotivationServiceImpl implements MotivationService {
   Future<void> _unlockAchievement(String id, String title, String desc, String cat, String tier) async {
     final existing = await _achievementRepository.getAchievement(id);
     if (existing == null || !existing.isUnlocked) {
-      final achievement = existing ?? Achievement.create(
+      final achievement = (existing ?? Achievement.create(
         achievementId: id,
         title: title,
         description: desc,
         category: cat,
         tier: tier,
+      )).copyWith(
+        isUnlocked: true,
+        unlockedAt: DateTime.now(),
       );
-      achievement.isUnlocked = true;
-      achievement.unlockedAt = DateTime.now();
       await _achievementRepository.saveAchievement(achievement);
       
       _eventController.add(MotivationEvent(

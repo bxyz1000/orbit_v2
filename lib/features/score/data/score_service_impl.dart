@@ -164,9 +164,10 @@ class ScoreServiceImpl implements ScoreService {
 
   @override
   Future<void> finalizeDay(DateTime date) async {
-    final score = await calculateActiveScore(date);
-    score.isFinalized = true;
-    score.updatedAt = DateTime.now();
+    final score = (await calculateActiveScore(date)).copyWith(
+      isFinalized: true,
+      updatedAt: DateTime.now(),
+    );
     await _scoreRepository.saveDailyScore(score);
 
     // Update PRs

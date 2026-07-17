@@ -1,4 +1,4 @@
-import 'package:isar_community/isar_community.dart';
+import 'package:isar_community/isar.dart';
 
 part 'focus_session.g.dart';
 

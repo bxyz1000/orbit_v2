@@ -1,27 +1,25 @@
-import 'package:isar_community/isar_community.dart';
-
-part 'weekly_score.g.dart';
-
-/// Aggregated performance metrics for a specific week.
-@collection
 class WeeklyScore {
-  Id id = Isar.autoIncrement;
+  final DateTime weekStartDate;
+  final int totalScore;
+  final double averageDailyScore;
+  final int taskScore;
+  final int habitScore;
+  final int focusScore;
+  final int healthScore;
+  final String scoreVersion;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  /// Start date of the week (normalized).
-  @Index(unique: true, replace: true)
-  late DateTime weekStartDate;
-
-  late int totalScore;
-  late double averageDailyScore;
-  
-  late int taskScore;
-  late int habitScore;
-  late int focusScore;
-  late int healthScore;
-
-  late String scoreVersion;
-  late DateTime createdAt;
-  late DateTime updatedAt;
-
-  WeeklyScore();
+  WeeklyScore({
+    required this.weekStartDate,
+    required this.totalScore,
+    required this.averageDailyScore,
+    required this.taskScore,
+    required this.habitScore,
+    required this.focusScore,
+    required this.healthScore,
+    required this.scoreVersion,
+    required this.createdAt,
+    required this.updatedAt,
+  });
 }
