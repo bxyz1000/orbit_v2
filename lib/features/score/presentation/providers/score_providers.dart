@@ -1,33 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
-import '../../data/repositories/score_repository.dart';
-import '../../data/repositories/personal_record_repository.dart';
-import '../../data/repositories/achievement_repository.dart';
 import '../../domain/services/score_service.dart';
 import '../../domain/services/motivation_service.dart';
 import '../../data/score_service_impl.dart';
 import '../../data/motivation_service_impl.dart';
-import '../../../../core/database/isar_database.dart';
-import '../../../tasks/data/task_repository.dart';
-import '../../../habits/data/habit_repository.dart';
-import '../../../focus/data/focus_repository.dart';
-import '../../../planner/data/planner_repository.dart';
-import '../../../health/data/health_repository.dart';
-import '../../../goals/data/goal_repository.dart';
+import '../../../../shared/providers/repository_providers.dart';
 import '../../domain/entities/daily_score.dart';
 import '../../domain/entities/personal_record.dart';
 import '../../domain/entities/achievement.dart';
-
-// Repositories
-final scoreRepositoryProvider = Provider<ScoreRepository>((ref) => ScoreRepository(IsarDatabase.instance));
-final personalRecordRepositoryProvider = Provider<PersonalRecordRepository>((ref) => PersonalRecordRepository(IsarDatabase.instance));
-final achievementRepositoryProvider = Provider<AchievementRepository>((ref) => AchievementRepository(IsarDatabase.instance));
-final taskRepositoryProvider = Provider<TaskRepository>((ref) => TaskRepository(IsarDatabase.instance));
-final habitRepositoryProvider = Provider<HabitRepository>((ref) => HabitRepository(IsarDatabase.instance));
-final focusRepositoryProvider = Provider<FocusRepository>((ref) => FocusRepository(IsarDatabase.instance));
-final plannerRepositoryProvider = Provider<PlannerRepository>((ref) => PlannerRepository(IsarDatabase.instance));
-final healthRepositoryProvider = Provider<HealthRepository>((ref) => HealthRepository(IsarDatabase.instance));
-final goalRepositoryProvider = Provider<GoalRepository>((ref) => GoalRepository(IsarDatabase.instance));
 
 /// Provider for the [ScoreService].
 final scoreServiceProvider = Provider<ScoreService>((ref) {
@@ -103,6 +83,52 @@ final currentDailyScoreProvider = FutureProvider<DailyScore>((ref) async {
   return score;
 });
 
+/// Provider for yesterday's daily score value.
+final yesterdayScoreProvider = FutureProvider<DailyScore?>((ref) async {
+  final service = ref.watch(scoreServiceProvider);
+  return service.calculateActiveScore(DateTime.now().subtract(const Duration(days: 1)));
+});
+
+/// Provider for the last 7 days of daily scores.
+final lastSevenDaysScoresProvider = FutureProvider<List<DailyScore>>((ref) async {
+  final service = ref.watch(scoreServiceProvider);
+  ref.watch(productivityDataChangesProvider);
+  
+  final List<DailyScore> scores = [];
+  for (int i = 6; i >= 0; i--) {
+    final date = DateTime.now().subtract(Duration(days: i));
+    scores.add(await service.calculateActiveScore(date));
+  }
+  return scores;
+});
+
+/// Provider for the last 30 days of daily scores.
+final lastThirtyDaysScoresProvider = FutureProvider<List<DailyScore>>((ref) async {
+  final service = ref.watch(scoreServiceProvider);
+  ref.watch(productivityDataChangesProvider);
+  
+  final List<DailyScore> scores = [];
+  for (int i = 29; i >= 0; i--) {
+    final date = DateTime.now().subtract(Duration(days: i));
+    scores.add(await service.calculateActiveScore(date));
+  }
+  return scores;
+});
+
+/// Provider for the current weekly score value.
+final currentWeeklyScoreProvider = FutureProvider<WeeklyScore>((ref) async {
+  final service = ref.watch(scoreServiceProvider);
+  ref.watch(productivityDataChangesProvider);
+  return service.calculateWeeklyScore(DateTime.now());
+});
+
+/// Provider for the current monthly score value.
+final currentMonthlyScoreProvider = FutureProvider<MonthlyScore>((ref) async {
+  final service = ref.watch(scoreServiceProvider);
+  ref.watch(productivityDataChangesProvider);
+  return service.calculateMonthlyScore(DateTime.now());
+});
+
 /// Provider for the current streak.
 final currentStreakProvider = FutureProvider<int>((ref) async {
   final motivation = ref.watch(motivationServiceProvider);
@@ -131,3 +157,10 @@ final motivationEventsProvider = StreamProvider<MotivationEvent>((ref) {
 
 /// Provider for current score version.
 final scoreVersionProvider = Provider<String>((ref) => ref.watch(scoreServiceProvider).scoreVersion);
+
+/// Provider for today's focus sessions.
+final todaySessionsProvider = FutureProvider((ref) async {
+  final repo = ref.watch(focusRepositoryProvider);
+  ref.watch(productivityDataChangesProvider);
+  return repo.getTodaySessions();
+});

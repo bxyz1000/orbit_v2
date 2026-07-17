@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
-import '../../../app/orbit_app.dart';
+import 'providers/preferences_providers.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefsAsync = ref.watch(userPreferencesProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
@@ -19,62 +21,66 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(OrbitSpacing.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildGeneralSection(textTheme, colorScheme),
-            OrbitSpacing.gapXl,
-            _buildSection(
-              title: 'Productivity',
-              items: [
-                _SettingItem(title: 'Default Home Screen', icon: Icons.home_outlined),
-                _SettingItem(title: 'Daily Reminder', icon: Icons.alarm_outlined),
-                _SettingItem(title: 'Planner Settings', icon: Icons.calendar_month_outlined),
-              ],
-              textTheme: textTheme,
-              colorScheme: colorScheme,
-            ),
-            OrbitSpacing.gapXl,
-            _buildSection(
-              title: 'Privacy',
-              items: [
-                _SettingItem(title: 'Local Storage', icon: Icons.storage_outlined),
-                _SettingItem(title: 'Permissions', icon: Icons.security_outlined),
-                _SettingItem(title: 'Backup', icon: Icons.cloud_upload_outlined),
-              ],
-              textTheme: textTheme,
-              colorScheme: colorScheme,
-            ),
-            OrbitSpacing.gapXl,
-            _buildSection(
-              title: 'Support',
-              items: [
-                _SettingItem(title: 'Help Center', icon: Icons.help_outline),
-                _SettingItem(title: 'Send Feedback', icon: Icons.feedback_outlined),
-                _SettingItem(title: 'About Orbit', icon: Icons.info_outline),
-              ],
-              textTheme: textTheme,
-              colorScheme: colorScheme,
-            ),
-            OrbitSpacing.gapXxl,
-            Center(
-              child: Text(
-                'Orbit MVP 0.1.0',
-                style: textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.5),
+      body: prefsAsync.when(
+        data: (prefs) => SingleChildScrollView(
+          padding: const EdgeInsets.all(OrbitSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildGeneralSection(textTheme, colorScheme, ref, prefs),
+              OrbitSpacing.gapXl,
+              _buildSection(
+                title: 'Productivity',
+                items: [
+                  _SettingItem(title: 'Default Home Screen', icon: Icons.home_outlined),
+                  _SettingItem(title: 'Daily Reminder', icon: Icons.alarm_outlined),
+                  _SettingItem(title: 'Planner Settings', icon: Icons.calendar_month_outlined),
+                ],
+                textTheme: textTheme,
+                colorScheme: colorScheme,
+              ),
+              OrbitSpacing.gapXl,
+              _buildSection(
+                title: 'Privacy',
+                items: [
+                  _SettingItem(title: 'Local Storage', icon: Icons.storage_outlined),
+                  _SettingItem(title: 'Permissions', icon: Icons.security_outlined),
+                  _SettingItem(title: 'Backup', icon: Icons.cloud_upload_outlined),
+                ],
+                textTheme: textTheme,
+                colorScheme: colorScheme,
+              ),
+              OrbitSpacing.gapXl,
+              _buildSection(
+                title: 'Support',
+                items: [
+                  _SettingItem(title: 'Help Center', icon: Icons.help_outline),
+                  _SettingItem(title: 'Send Feedback', icon: Icons.feedback_outlined),
+                  _SettingItem(title: 'About Orbit', icon: Icons.info_outline),
+                ],
+                textTheme: textTheme,
+                colorScheme: colorScheme,
+              ),
+              OrbitSpacing.gapXxl,
+              Center(
+                child: Text(
+                  'Orbit MVP 0.1.0',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.5),
+                  ),
                 ),
               ),
-            ),
-            OrbitSpacing.gapXxl,
-          ],
+              OrbitSpacing.gapXxl,
+            ],
+          ),
         ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );
   }
 
-  Widget _buildGeneralSection(TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildGeneralSection(TextTheme textTheme, ColorScheme colorScheme, WidgetRef ref, dynamic prefs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -88,37 +94,42 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
         ),
-        ValueListenableBuilder<ThemeMode>(
-          valueListenable: themeNotifier,
-          builder: (context, mode, _) {
-            return OrbitGroupCard(
-              borderRadius: OrbitRadius.brLg,
-              children: [
-                OrbitInfoTile(
-                  icon: Icons.language_outlined,
-                  title: 'Language',
-                  trailing: const Icon(Icons.chevron_right, size: 20),
+        OrbitGroupCard(
+          borderRadius: OrbitRadius.brLg,
+          children: [
+            OrbitInfoTile(
+              icon: Icons.language_outlined,
+              title: 'Language',
+              trailing: Text(
+                prefs.language,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
                 ),
-                const Divider(height: 1, indent: OrbitSpacing.huge),
-                OrbitInfoTile(
-                  icon: Icons.palette_outlined,
-                  title: 'Theme',
-                  trailing: Text(
-                    mode.name[0].toUpperCase() + mode.name.substring(1),
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
+              ),
+            ),
+            const Divider(height: 1, indent: 56),
+            OrbitInfoTile(
+              icon: Icons.palette_outlined,
+              title: 'Theme',
+              trailing: Text(
+                prefs.themeMode[0].toUpperCase() + prefs.themeMode.substring(1),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
                 ),
-                const Divider(height: 1, indent: OrbitSpacing.huge),
-                OrbitInfoTile(
-                  icon: Icons.notifications_none_outlined,
-                  title: 'Notifications',
-                  trailing: const Icon(Icons.chevron_right, size: 20),
+              ),
+            ),
+            const Divider(height: 1, indent: 56),
+            OrbitInfoTile(
+              icon: Icons.notifications_none_outlined,
+              title: 'Notifications',
+              trailing: Switch(
+                value: prefs.notificationsEnabled,
+                onChanged: (v) => ref.read(preferencesNotifierProvider.notifier).updatePreferences(
+                  prefs.copyWith(notificationsEnabled: v)
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -162,11 +173,9 @@ class SettingsPage extends StatelessWidget {
                   onTap: () {},
                 ),
                 if (!isLast)
-                  Divider(
+                  const Divider(
                     height: 1,
-                    indent: OrbitSpacing.huge,
-                    endIndent: OrbitSpacing.md,
-                    color: colorScheme.outline.withOpacity(0.1),
+                    indent: 56,
                   ),
               ],
             );

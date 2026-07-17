@@ -34,11 +34,27 @@ class ScoreRepository {
     return model?.toEntity();
   }
 
+  /// Saves or updates a WeeklyScore.
+  Future<void> saveWeeklyScore(WeeklyScore score) async {
+    final model = WeeklyScoreModel.fromEntity(score);
+    await _isar.writeTxn(() async {
+      await _isar.weeklyScoreModels.put(model);
+    });
+  }
+
   /// Retrieves the MonthlyScore for a given month start date.
   Future<MonthlyScore?> getMonthlyScore(DateTime monthStart) async {
     final normalized = DateTime(monthStart.year, monthStart.month, 1);
     final model = await _isar.monthlyScoreModels.filter().monthStartDateEqualTo(normalized).findFirst();
     return model?.toEntity();
+  }
+
+  /// Saves or updates a MonthlyScore.
+  Future<void> saveMonthlyScore(MonthlyScore score) async {
+    final model = MonthlyScoreModel.fromEntity(score);
+    await _isar.writeTxn(() async {
+      await _isar.monthlyScoreModels.put(model);
+    });
   }
 
   /// Streams updates for a specific day's score.

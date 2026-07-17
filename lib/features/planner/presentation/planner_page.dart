@@ -53,46 +53,10 @@ class _PlannerPageState extends State<PlannerPage> {
     try {
       final events = await widget.plannerRepository.getAllEvents();
       if (mounted) {
-        if (events.isEmpty) {
-          final now = DateTime.now();
-          final initialEvents = [
-            PlannerEvent.create(
-              date: now,
-              startTime: '09:00 AM',
-              endTime: '10:00 AM',
-              title: 'Gym Session',
-              description: 'Morning workout at the local gym.',
-              color: Colors.blue,
-            ),
-            PlannerEvent.create(
-              date: now,
-              startTime: '11:00 AM',
-              endTime: '01:00 PM',
-              title: 'Flutter Development',
-              description: 'Work on Orbit v2 features.',
-              color: Colors.orange,
-            ),
-            PlannerEvent.create(
-              date: now,
-              startTime: '03:00 PM',
-              endTime: '04:30 PM',
-              title: 'Study Session',
-              description: 'Review system design patterns.',
-              color: Colors.purple,
-            ),
-          ];
-          await widget.plannerRepository.saveEvents(initialEvents);
-          final seededEvents = await widget.plannerRepository.getAllEvents();
-          setState(() {
-            _allEvents = seededEvents;
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _allEvents = events;
-            _isLoading = false;
-          });
-        }
+        setState(() {
+          _allEvents = events;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       _showError('Failed to load planner');
@@ -405,7 +369,7 @@ class _PlannerPageState extends State<PlannerPage> {
                     Icon(Icons.event_note, size: 64, color: colorScheme.onSurface.withValues(alpha: 0.1)),
                     const SizedBox(height: OrbitSpacing.md),
                     Text(
-                      'No events scheduled',
+                      'No planner events today.',
                       style: textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurface.withValues(alpha: 0.4),
                       ),

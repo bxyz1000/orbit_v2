@@ -13,6 +13,7 @@ import '../../features/score/data/models/weekly_score_model.dart';
 import '../../features/score/data/models/monthly_score_model.dart';
 import '../../features/score/data/models/personal_record_model.dart';
 import '../../features/score/data/models/achievement_model.dart';
+import '../../features/settings/domain/user_preferences.dart';
 
 class IsarDatabase {
   static late final Isar _isar;
@@ -38,6 +39,7 @@ class IsarDatabase {
         MonthlyScoreModelSchema,
         PersonalRecordModelSchema,
         AchievementModelSchema,
+        UserPreferencesSchema,
       ],
       directory: dir.path,
     );

@@ -8,6 +8,12 @@ abstract class ScoreService {
   /// data from all repositories.
   Future<DailyScore> calculateActiveScore(DateTime date);
 
+  /// Calculates the weekly score aggregate for the week containing [date].
+  Future<WeeklyScore> calculateWeeklyScore(DateTime date);
+
+  /// Calculates the monthly score aggregate for the month containing [date].
+  Future<MonthlyScore> calculateMonthlyScore(DateTime date);
+
   /// Finalizes the day's score. Locked scores become immutable.
   /// Typically called at 11:59:59 PM.
   Future<void> finalizeDay(DateTime date);

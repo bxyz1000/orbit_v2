@@ -40,6 +40,147 @@ class ScoreServiceImpl implements ScoreService {
   @override
   Future<DailyScore> calculateActiveScore(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
+
+    // Check if score is already finalized in DB
+    final existing = await _scoreRepository.getDailyScore(startOfDay);
+    if (existing != null && existing.isFinalized) {
+      return existing;
+    }
+
+    // Check if we should finalize now (it's past 11:55 PM today or it's a previous day)
+    if (_isPastFinalizationTime(date)) {
+      await finalizeDay(date);
+      return (await _scoreRepository.getDailyScore(startOfDay))!;
+    }
+    
+    return await _calculateRawScore(date);
+  }
+
+  @override
+  Future<WeeklyScore> calculateWeeklyScore(DateTime date) async {
+    final weekStart = _getWeekStart(date);
+    int total = 0;
+    int tasks = 0;
+    int habits = 0;
+    int focus = 0;
+    int health = 0;
+    int daysCount = 0;
+
+    for (int i = 0; i < 7; i++) {
+      final currentDay = weekStart.add(Duration(days: i));
+      if (currentDay.isAfter(DateTime.now())) break;
+
+      final score = await calculateActiveScore(currentDay);
+      total += score.totalScore;
+      tasks += score.taskScore;
+      habits += score.habitScore;
+      focus += score.focusScore;
+      health += (score.stepsScore + score.workoutScore + score.sleepScore);
+      daysCount++;
+    }
+
+    final weeklyScore = WeeklyScore(
+      weekStartDate: weekStart,
+      totalScore: total,
+      averageDailyScore: daysCount > 0 ? total / daysCount : 0.0,
+      taskScore: tasks,
+      habitScore: habits,
+      focusScore: focus,
+      healthScore: health,
+      scoreVersion: scoreVersion,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    await _scoreRepository.saveWeeklyScore(weeklyScore);
+    return weeklyScore;
+  }
+
+  @override
+  Future<MonthlyScore> calculateMonthlyScore(DateTime date) async {
+    final monthStart = _getMonthStart(date);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 0);
+    int total = 0;
+    int tasks = 0;
+    int habits = 0;
+    int focus = 0;
+    int health = 0;
+
+    final daysInMonth = monthEnd.day;
+    for (int i = 0; i < daysInMonth; i++) {
+      final currentDay = monthStart.add(Duration(days: i));
+      if (currentDay.isAfter(DateTime.now())) break;
+
+      final score = await calculateActiveScore(currentDay);
+      total += score.totalScore;
+      tasks += score.taskScore;
+      habits += score.habitScore;
+      focus += score.focusScore;
+      health += (score.stepsScore + score.workoutScore + score.sleepScore);
+    }
+
+    final monthlyScore = MonthlyScore(
+      monthStartDate: monthStart,
+      totalScore: total,
+      taskScore: tasks,
+      habitScore: habits,
+      focusScore: focus,
+      healthScore: health,
+      scoreVersion: scoreVersion,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    await _scoreRepository.saveMonthlyScore(monthlyScore);
+    return monthlyScore;
+  }
+
+  DateTime _getWeekStart(DateTime date) {
+    return DateTime(date.year, date.month, date.day).subtract(Duration(days: date.weekday - 1));
+  }
+
+  DateTime _getMonthStart(DateTime date) {
+    return DateTime(date.year, date.month, 1);
+  }
+
+  bool _isPastFinalizationTime(DateTime date) {
+    final now = DateTime.now();
+    final startOfDate = DateTime(date.year, date.month, date.day);
+    final startOfToday = DateTime(now.year, now.month, now.day);
+
+    if (startOfDate.isBefore(startOfToday)) return true;
+    if (startOfDate.isAtSameMomentAs(startOfToday)) {
+      if (now.hour > 23 || (now.hour == 23 && now.minute >= 55)) return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> finalizeDay(DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    
+    // We re-calculate one last time to get the absolute latest state
+    // But we avoid the check to prevent loop
+    final score = (await _calculateRawScore(startOfDay)).copyWith(
+      isFinalized: true,
+      updatedAt: DateTime.now(),
+    );
+    await _scoreRepository.saveDailyScore(score);
+
+    // Update PRs
+    await _recordRepository.updateIfHigher('highest_daily_score', score.totalScore.toDouble(), score.date);
+    
+    final streak = await _calculateStreak(score.date);
+    await _recordRepository.updateIfHigher('longest_streak', streak.toDouble(), score.date);
+    
+    // Trigger aggregate updates
+    await calculateWeeklyScore(date);
+    await calculateMonthlyScore(date);
+  }
+
+  /// Calculates score without finalization checks to avoid recursion.
+  Future<DailyScore> _calculateRawScore(DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
     
     // 1. Task Score
     final tasks = await _taskRepository.getAllTasks();
@@ -56,7 +197,6 @@ class ScoreServiceImpl implements ScoreService {
     final todaySessions = focusSessions.where((s) => s.completed && _isSameDay(s.startedAt, startOfDay));
     final focusMinutes = todaySessions.fold<int>(0, (sum, s) => sum + s.duration);
     
-    // Algorithm: (Minutes / 25) * 20. Diminishing returns after cap (using 120m default).
     const maxDailyFocus = 120;
     double focusPoints = (min(focusMinutes, maxDailyFocus) / 25) * 20;
     if (focusMinutes > maxDailyFocus) {
@@ -68,7 +208,7 @@ class ScoreServiceImpl implements ScoreService {
     final steps = await _healthRepository.getStepsForDate(startOfDay);
     int stepsPoints = 0;
     if (steps != null) {
-      const stepGoal = 10000; // Default goal
+      const stepGoal = 10000;
       if (steps.count >= stepGoal) {
         stepsPoints += 50;
         final bonusSteps = max(0, steps.count - stepGoal);
@@ -118,27 +258,20 @@ class ScoreServiceImpl implements ScoreService {
       multiplier = 1.1;
     }
 
-    // 9. Bonuses (Calculated based on previous days)
+    // 9. Bonuses
     int bonusScore = 0;
     final yesterdayScore = await _scoreRepository.getDailyScore(startOfDay.subtract(const Duration(days: 1)));
     if (yesterdayScore != null && yesterdayScore.isFinalized) {
-      // Beat Yesterday
       int currentSubtotal = taskScore + habitScore + focusScore + healthScore + plannerScore + goalScore - penaltyScore;
       if (currentSubtotal > yesterdayScore.totalScore) {
         bonusScore += 25;
       }
     }
 
-    // Streak Milestones
-    if (streak == 7) {
-      bonusScore += 100;
-    } else if (streak == 30) {
-      bonusScore += 500;
-    } else if (streak == 100) {
-      bonusScore += 2000;
-    }
+    if (streak == 7) bonusScore += 100;
+    if (streak == 30) bonusScore += 500;
+    if (streak == 100) bonusScore += 2000;
 
-    // Perfect Balance
     bool isBalanced = completedTasks >= 3 && completions.isNotEmpty && focusMinutes >= 25 && stepsPoints >= 50;
     if (isBalanced) bonusScore += 75;
 
@@ -160,24 +293,6 @@ class ScoreServiceImpl implements ScoreService {
       penaltyScore: penaltyScore,
       scoreVersion: scoreVersion,
     );
-  }
-
-  @override
-  Future<void> finalizeDay(DateTime date) async {
-    final score = (await calculateActiveScore(date)).copyWith(
-      isFinalized: true,
-      updatedAt: DateTime.now(),
-    );
-    await _scoreRepository.saveDailyScore(score);
-
-    // Update PRs
-    await _recordRepository.updateIfHigher('highest_daily_score', score.totalScore.toDouble(), score.date);
-    
-    final streak = await _calculateStreak(score.date);
-    await _recordRepository.updateIfHigher('longest_streak', streak.toDouble(), score.date);
-    
-    // Update Weekly/Monthly aggregates (simplified for engine implementation)
-    // TODO: Implement full aggregation logic
   }
 
   @override

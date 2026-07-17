@@ -1,121 +1,175 @@
 import 'package:flutter/material.dart';
-import '../features/home/presentation/today_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/home/presentation/orbit_home_page.dart';
 import '../features/tasks/presentation/tasks_page.dart';
-import '../features/planner/presentation/planner_page.dart';
-import '../features/habits/presentation/habits_page.dart';
-import '../features/focus/presentation/focus_page.dart';
-import '../features/analytics/presentation/analytics_page.dart';
+import '../features/analytics/presentation/insights_page.dart';
 import '../features/profile/presentation/profile_page.dart';
-import '../features/tasks/data/task_repository.dart';
-import '../features/notes/data/note_repository.dart';
-import '../features/planner/data/planner_repository.dart';
-import '../features/habits/data/habit_repository.dart';
-import '../features/focus/data/focus_repository.dart';
-import '../features/score/score.dart';
+import '../shared/providers/repository_providers.dart';
+import '../core/theme/orbit_spacing.dart';
+import '../core/theme/orbit_radius.dart';
 
-class AppShell extends StatefulWidget {
-  final TaskRepository taskRepository;
-  final NoteRepository noteRepository;
-  final PlannerRepository plannerRepository;
-  final HabitRepository habitRepository;
-  final FocusRepository focusRepository;
-  final ScoreService scoreService;
-
-  const AppShell({
-    super.key,
-    required this.taskRepository,
-    required this.noteRepository,
-    required this.plannerRepository,
-    required this.habitRepository,
-    required this.focusRepository,
-    required this.scoreService,
-  });
+class AppShell extends ConsumerStatefulWidget {
+  const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
-
-  late final List<Widget> _pages;
+  bool _isFabExpanded = false;
+  late AnimationController _fabAnimationController;
+  late Animation<double> _fabAnimation;
 
   @override
   void initState() {
     super.initState();
-    _pages = [
-      const TodayPage(),
-      TasksPage(taskRepository: widget.taskRepository),
-      HabitsPage(habitRepository: widget.habitRepository),
-      FocusPage(focusRepository: widget.focusRepository),
-      AnalyticsPage(
-        taskRepository: widget.taskRepository,
-        habitRepository: widget.habitRepository,
-        focusRepository: widget.focusRepository,
-      ),
-      PlannerPage(plannerRepository: widget.plannerRepository),
-      const ProfilePage(),
-    ];
+    _fabAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fabAnimation = CurvedAnimation(
+      parent: _fabAnimationController,
+      curve: Curves.easeOutBack,
+    );
+  }
+
+  @override
+  void dispose() {
+    _fabAnimationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleFab() {
+    setState(() {
+      _isFabExpanded = !_isFabExpanded;
+      if (_isFabExpanded) {
+        _fabAnimationController.forward();
+      } else {
+        _fabAnimationController.reverse();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      const OrbitHomePage(),
+      TasksPage(taskRepository: ref.read(taskRepositoryProvider)),
+      const InsightsPage(),
+      const ProfilePage(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Today',
-            tooltip: 'Today',
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _selectedIndex,
+            children: pages,
           ),
-          NavigationDestination(
-            icon: Icon(Icons.check_circle_outline),
-            selectedIcon: Icon(Icons.check_circle),
-            label: 'Tasks',
-            tooltip: 'Tasks',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.repeat_outlined),
-            selectedIcon: Icon(Icons.repeat),
-            label: 'Habits',
-            tooltip: 'Habits',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.timer_outlined),
-            selectedIcon: Icon(Icons.timer),
-            label: 'Focus',
-            tooltip: 'Focus',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics),
-            label: 'Analytics',
-            tooltip: 'Analytics',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: 'Planner',
-            tooltip: 'Planner',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-            tooltip: 'Profile',
-          ),
+          if (_isFabExpanded)
+            GestureDetector(
+              onTap: _toggleFab,
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.5),
+              ),
+            ),
+          if (_isFabExpanded) _buildFabMenu(),
         ],
+      ),
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavAction(0, Icons.home_outlined, Icons.home, 'Orbit'),
+            _buildNavAction(1, Icons.check_circle_outline, Icons.check_circle, 'Tasks'),
+            const SizedBox(width: 48), // Space for FAB
+            _buildNavAction(2, Icons.analytics_outlined, Icons.analytics, 'Insights'),
+            _buildNavAction(3, Icons.person_outline, Icons.person, 'Profile'),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _toggleFab,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        child: RotationTransition(
+          turns: Tween(begin: 0.0, end: 0.125).animate(_fabAnimation),
+          child: const Icon(Icons.add, size: 32),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+
+  Widget _buildNavAction(int index, IconData icon, IconData selectedIcon, String label) {
+    final isSelected = _selectedIndex == index;
+    final color = isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+          _isFabExpanded = false;
+          _fabAnimationController.reverse();
+        });
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(isSelected ? selectedIcon : icon, color: color),
+            Text(
+              label, 
+              style: TextStyle(
+                fontSize: 10, 
+                color: color, 
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFabMenu() {
+    return Positioned(
+      bottom: 100,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildFabOption(Icons.add_task, 'Task', Colors.blue, () {}),
+            OrbitSpacing.gapMd,
+            _buildFabOption(Icons.repeat, 'Habit', Colors.green, () {}),
+            OrbitSpacing.gapMd,
+            _buildFabOption(Icons.calendar_today, 'Event', Colors.purple, () {}),
+            OrbitSpacing.gapMd,
+            _buildFabOption(Icons.timer, 'Focus', Colors.orange, () {}),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFabOption(IconData icon, String label, Color color, VoidCallback onTap) {
+    return ScaleTransition(
+      scale: _fabAnimation,
+      child: FloatingActionButton.extended(
+        onPressed: () {
+          _toggleFab();
+          onTap();
+        },
+        heroTag: null,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        icon: Icon(icon, color: color),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
