@@ -7,8 +7,12 @@ part 'planner_event.g.dart';
 class PlannerEvent {
   Id id = Isar.autoIncrement;
 
-  late String time;
+  late DateTime date;
+  late String startTime;
+  late String endTime;
   late String title;
+  String? description;
+  bool isCompleted = false;
   
   @ignore
   Color get color => Color(colorValue);
@@ -19,10 +23,33 @@ class PlannerEvent {
   PlannerEvent();
 
   PlannerEvent.create({
-    required this.time,
+    required this.date,
+    required this.startTime,
+    required this.endTime,
     required this.title,
+    this.description,
     required Color color,
   }) {
     this.color = color;
+  }
+
+  PlannerEvent copyWith({
+    Id? id,
+    DateTime? date,
+    String? startTime,
+    String? endTime,
+    String? title,
+    String? description,
+    Color? color,
+  }) {
+    final event = PlannerEvent()
+      ..id = id ?? this.id
+      ..date = date ?? this.date
+      ..startTime = startTime ?? this.startTime
+      ..endTime = endTime ?? this.endTime
+      ..title = title ?? this.title
+      ..description = description ?? this.description
+      ..color = color ?? this.color;
+    return event;
   }
 }

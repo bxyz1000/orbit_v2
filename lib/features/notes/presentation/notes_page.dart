@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import '../domain/note.dart';
-import '../../../core/storage/storage_service.dart';
+import '../data/note_repository.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_search_bar.dart';
 
 class NotesPage extends StatefulWidget {
-  final StorageService storageService;
+  final NoteRepository noteRepository;
 
   const NotesPage({
     super.key,
-    required this.storageService,
+    required this.noteRepository,
   });
 
   @override
@@ -36,11 +36,13 @@ class _NotesPageState extends State<NotesPage> {
 
   Future<void> _loadNotes() async {
     try {
-      final notes = await widget.storageService.loadNotes();
-      setState(() {
-        _notes = notes;
-        _isLoading = false;
-      });
+      final notes = await widget.noteRepository.getAllNotes();
+      if (mounted) {
+        setState(() {
+          _notes = notes;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       _showError('Failed to load notes');
     }
@@ -49,7 +51,11 @@ class _NotesPageState extends State<NotesPage> {
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -103,9 +109,13 @@ class _NotesPageState extends State<NotesPage> {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
     if (title.isNotEmpty) {
-      final newNote = Note()..title = title..content = content..createdAt = DateTime.now();
+      final newNote = Note.create(
+        title: title,
+        content: content,
+        createdAt: DateTime.now(),
+      );
       try {
-        await widget.storageService.saveNotes([newNote]);
+        await widget.noteRepository.saveNote(newNote);
         _clearControllers();
         if (mounted) Navigator.pop(context);
         _loadNotes();
@@ -117,7 +127,7 @@ class _NotesPageState extends State<NotesPage> {
 
   void _deleteNote(Note note) async {
     try {
-      await widget.storageService.deleteNote(note.id);
+      await widget.noteRepository.deleteNote(note.id);
       _loadNotes();
 
       if (mounted) {
@@ -129,7 +139,7 @@ class _NotesPageState extends State<NotesPage> {
             action: SnackBarAction(
               label: 'Undo',
               onPressed: () async {
-                await widget.storageService.saveNotes([note]);
+                await widget.noteRepository.saveNote(note);
                 _loadNotes();
               },
             ),
@@ -186,7 +196,7 @@ class _NotesPageState extends State<NotesPage> {
           if (_notes.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: OrbitSpacing.lg,
+                horizontal: OrbitSpacing.xl,
                 vertical: OrbitSpacing.md,
               ),
               child: OrbitSearchBar(
@@ -201,7 +211,7 @@ class _NotesPageState extends State<NotesPage> {
                 : filteredNotes.isEmpty
                     ? _buildNoResults(theme, colorScheme)
                     : ListView.builder(
-                        padding: const EdgeInsets.all(OrbitSpacing.lg),
+                        padding: const EdgeInsets.all(OrbitSpacing.xl),
                         itemCount: filteredNotes.length,
                         itemBuilder: (context, index) {
                           final note = filteredNotes[filteredNotes.length - 1 - index];
@@ -219,42 +229,140 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
+  void _editNote(Note note) {
+    _titleController.text = note.title;
+    _contentController.text = note.content;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Note'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Title',
+                ),
+              ),
+              const SizedBox(height: OrbitSpacing.md),
+              TextField(
+                controller: _contentController,
+                decoration: const InputDecoration(
+                  hintText: 'Content',
+                ),
+                maxLines: 5,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _clearControllers();
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => _submitEditNote(note),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submitEditNote(Note note) async {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+    if (title.isNotEmpty) {
+      final updatedNote = note.copyWith(
+        title: title,
+        content: content,
+      );
+      try {
+        await widget.noteRepository.saveNote(updatedNote);
+        _clearControllers();
+        if (mounted) Navigator.pop(context);
+        _loadNotes();
+      } catch (e) {
+        _showError('Failed to update note');
+      }
+    }
+  }
+
+  void _showNoteMenu(Note note) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(context);
+                _editNote(note);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteNote(note);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNoteItem(Note note, ColorScheme colorScheme, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(bottom: OrbitSpacing.md),
-      child: OrbitGroupCard(
-        children: [
-          OrbitInfoTile(
-            title: note.title,
-            subtitleWidget: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (note.content.isNotEmpty)
+      child: InkWell(
+        onTap: () => _editNote(note),
+        onLongPress: () => _showNoteMenu(note),
+        borderRadius: OrbitRadius.brMd,
+        child: OrbitGroupCard(
+          children: [
+            OrbitInfoTile(
+              title: note.title,
+              subtitleWidget: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (note.content.isNotEmpty)
+                    Text(
+                      note.content,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                  const SizedBox(height: OrbitSpacing.xs),
                   Text(
-                    note.content,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                    _formatDate(note.createdAt),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.4),
                     ),
                   ),
-                const SizedBox(height: OrbitSpacing.xs),
-                Text(
-                  _formatDate(note.createdAt),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.4),
-                  ),
-                ),
-              ],
+                ],
+              ),
+              trailing: Icon(
+                Icons.more_vert,
+                size: 20,
+                color: colorScheme.onSurface.withOpacity(0.3),
+              ),
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              color: colorScheme.error.withOpacity(0.7),
-              onPressed: () => _deleteNote(note),
-              tooltip: 'Delete Note',
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

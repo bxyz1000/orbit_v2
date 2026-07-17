@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
@@ -7,55 +8,10 @@ import '../../../shared/widgets/orbit_stat_card.dart';
 import '../../../shared/widgets/orbit_action_card.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
-import '../../../core/storage/storage_service.dart';
-import '../../tasks/domain/task.dart';
+import '../../score/score.dart';
 
-class TodayPage extends StatefulWidget {
-  final StorageService storageService;
-
-  const TodayPage({
-    super.key,
-    required this.storageService,
-  });
-
-  @override
-  State<TodayPage> createState() => _TodayPageState();
-}
-
-class _TodayPageState extends State<TodayPage> {
-  List<Task> _tasks = [];
-  late final String _quote;
-  bool _isLoading = true;
-
-  final List<String> _quotes = const [
-    "The secret of getting ahead is getting started.",
-    "It always seems impossible until it's done.",
-    "Don't watch the clock; do what it does. Keep going.",
-    "Quality is not an act, it is a habit.",
-    "The way to get started is to quit talking and begin doing.",
-    "Your talent determines what you can do. Your motivation determines how much you are willing to do.",
-    "Well begun is half done.",
-    "Action is the foundational key to all success.",
-    "Focus on being productive instead of busy.",
-    "The best way to predict your future is to create it.",
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _quote = _quotes[Random().nextInt(_quotes.length)];
-    _loadTasks();
-  }
-
-  Future<void> _loadTasks() async {
-    final tasks = await widget.storageService.loadTasks();
-    if (mounted) {
-      setState(() {
-        _tasks = tasks;
-        _isLoading = false;
-      });
-    }
-  }
+class TodayPage extends ConsumerWidget {
+  const TodayPage({super.key});
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -65,30 +21,33 @@ class _TodayPageState extends State<TodayPage> {
     return 'Good Night 🌌';
   }
 
-  void _showFeedback(String message) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scoreAsync = ref.watch(currentDailyScoreProvider);
+    final streakAsync = ref.watch(currentStreakProvider);
+    final recordsAsync = ref.watch(personalRecordsProvider);
+    final achievementsAsync = ref.watch(unlockedAchievementsProvider);
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
-    final completedCount = _tasks.where((t) => t.completed).length;
-    final remainingCount = _tasks.length - completedCount;
-    final completionPct = _tasks.isEmpty ? 0 : (completedCount * 100 ~/ _tasks.length);
+    // Listen for motivation events and show snackbars
+    ref.listen(motivationEventsProvider, (previous, next) {
+      if (next.hasValue) {
+        final event = next.value!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(event.message),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -97,28 +56,37 @@ class _TodayPageState extends State<TodayPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(textTheme, colorScheme),
+              _buildHeader(context, ref, scoreAsync, streakAsync),
               const SizedBox(height: OrbitSpacing.xxl),
-              const OrbitSectionHeader(title: "Today's Focus"),
-              const SizedBox(height: OrbitSpacing.lg),
-              _buildFocusCard(textTheme, colorScheme, remainingCount),
-              const SizedBox(height: OrbitSpacing.xxl),
-              const OrbitSectionHeader(title: "Quick Actions"),
-              const SizedBox(height: OrbitSpacing.lg),
-              _buildQuickActionsGrid(),
-              const SizedBox(height: OrbitSpacing.xxl),
-              const OrbitSectionHeader(title: "Today's Progress"),
-              const SizedBox(height: OrbitSpacing.lg),
-              _buildProgressStats(theme, completedCount, remainingCount, completionPct),
-              const SizedBox(height: OrbitSpacing.xxl),
-              const OrbitSectionHeader(title: "Motivation"),
-              const SizedBox(height: OrbitSpacing.lg),
-              _buildMotivationCard(textTheme, colorScheme),
-              const SizedBox(height: OrbitSpacing.xxl),
-              const OrbitSectionHeader(title: "Recent Activity"),
-              const SizedBox(height: OrbitSpacing.lg),
-              _buildRecentActivity(colorScheme),
-              const SizedBox(height: OrbitSpacing.huge),
+              
+              scoreAsync.when(
+                data: (score) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const OrbitSectionHeader(title: "Today's Focus"),
+                    const SizedBox(height: OrbitSpacing.lg),
+                    _buildFocusOverview(context, score),
+                    const SizedBox(height: OrbitSpacing.xxl),
+                    
+                    const OrbitSectionHeader(title: "Consistency & Records"),
+                    const SizedBox(height: OrbitSpacing.lg),
+                    _buildRecordsSection(recordsAsync),
+                    const SizedBox(height: OrbitSpacing.xxl),
+                    
+                    const OrbitSectionHeader(title: "Quick Actions"),
+                    const SizedBox(height: OrbitSpacing.lg),
+                    _buildQuickActionsGrid(context),
+                    const SizedBox(height: OrbitSpacing.xxl),
+                    
+                    const OrbitSectionHeader(title: "Achievements"),
+                    const SizedBox(height: OrbitSpacing.lg),
+                    _buildAchievementsSection(achievementsAsync),
+                    const SizedBox(height: OrbitSpacing.huge),
+                  ],
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text('Error loading score: $e'),
+              ),
             ],
           ),
         ),
@@ -126,8 +94,12 @@ class _TodayPageState extends State<TodayPage> {
     );
   }
 
-  Widget _buildHeader(TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, AsyncValue<DailyScore> scoreAsync, AsyncValue<int> streakAsync) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
     final now = DateTime.now();
+    
     final months = const [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -137,92 +109,150 @@ class _TodayPageState extends State<TodayPage> {
     ];
     final dateString = '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}';
 
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _getGreeting(),
-          style: textTheme.headlineLarge,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_getGreeting(), style: textTheme.headlineLarge),
+            const SizedBox(height: OrbitSpacing.xs),
+            Text(dateString, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface.withOpacity(0.6))),
+          ],
         ),
-        const SizedBox(height: OrbitSpacing.xs),
-        Text(
-          'Welcome back to Orbit',
-          style: textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurface.withOpacity(0.6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            scoreAsync.when(
+              data: (score) => AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: OrbitRadius.brCircular,
+                  boxShadow: [
+                    BoxShadow(color: colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
+                  ],
+                ),
+                child: Text(
+                  '${score.totalScore}',
+                  style: textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+              loading: () => const SizedBox(width: 40, height: 40, child: CircularProgressIndicator(strokeWidth: 2)),
+              error: (_, __) => const Icon(Icons.error_outline),
+            ),
+            const SizedBox(height: OrbitSpacing.sm),
+            streakAsync.when(
+              data: (streak) => Row(
+                children: [
+                  Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                  const SizedBox(width: 4),
+                  Text('$streak Day Streak', style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.orange)),
+                ],
+              ),
+              loading: () => const SizedBox(),
+              error: (_, __) => const SizedBox(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFocusOverview(BuildContext context, DailyScore score) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Derive minutes from score (v1.1 formula: 25m = 20pts)
+    final focusMinutes = (score.focusScore * 25 / 20).round();
+    final tasksCompleted = score.taskScore ~/ 10;
+    
+    return Row(
+      children: [
+        Expanded(
+          child: OrbitStatCard(
+            title: 'Focus Time',
+            value: focusMinutes >= 60 ? '${focusMinutes ~/ 60}h ${focusMinutes % 60}m' : '${focusMinutes}m',
+            icon: Icons.timer,
           ),
         ),
-        const SizedBox(height: OrbitSpacing.md),
-        Text(
-          dateString,
-          style: textTheme.titleSmall?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: OrbitSpacing.md),
+        Expanded(
+          child: OrbitStatCard(
+            title: 'Tasks Done',
+            value: '$tasksCompleted',
+            icon: Icons.check_circle,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFocusCard(TextTheme textTheme, ColorScheme colorScheme, int remaining) {
-    final isCaughtUp = remaining == 0;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(OrbitSpacing.lg),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: OrbitRadius.brLg,
-        border: Border.all(
-          color: colorScheme.outline.withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  isCaughtUp ? "You're all caught up!" : "Complete $remaining remaining tasks",
-                  style: textTheme.titleLarge,
-                ),
+  Widget _buildRecordsSection(AsyncValue<List<PersonalRecord>> recordsAsync) {
+    return recordsAsync.when(
+      data: (records) {
+        if (records.isEmpty) return const OrbitGroupCard(children: [OrbitInfoTile(title: 'No records yet', subtitle: 'Keep pushing to set your first PR!')]);
+        
+        // Find specific records
+        final highestScore = records.where((r) => r.recordType == 'highest_daily_score').firstOrNull;
+        final longestStreak = records.where((r) => r.recordType == 'longest_streak').firstOrNull;
+        
+        return OrbitGroupCard(
+          children: [
+            if (highestScore != null)
+              OrbitInfoTile(
+                icon: Icons.emoji_events_outlined,
+                title: 'Personal Best Score',
+                subtitle: '${highestScore.value.toInt()} points',
+                trailing: Text(_formatDate(highestScore.achievedAt)),
               ),
-              if (!isCaughtUp)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: OrbitSpacing.sm,
-                    vertical: OrbitSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withOpacity(0.1),
-                    borderRadius: OrbitRadius.brCircular,
-                  ),
-                  child: Text(
-                    'In Progress',
-                    style: textTheme.labelSmall?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: OrbitSpacing.sm),
-          Text(
-            isCaughtUp 
-                ? 'Great job! Take some time to relax or plan your next move.'
-                : 'Stay focused and keep moving toward your goals.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
+            if (longestStreak != null)
+              OrbitInfoTile(
+                icon: Icons.auto_graph,
+                title: 'Longest Streak',
+                subtitle: '${longestStreak.value.toInt()} days',
+                trailing: Text(_formatDate(longestStreak.achievedAt)),
+              ),
+          ],
+        );
+      },
+      loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+      error: (_, __) => const Text('Error loading records'),
     );
   }
 
-  Widget _buildQuickActionsGrid() {
+  Widget _buildAchievementsSection(AsyncValue<List<Achievement>> achievementsAsync) {
+    return achievementsAsync.when(
+      data: (achievements) {
+        if (achievements.isEmpty) return const OrbitGroupCard(children: [OrbitInfoTile(title: 'No achievements unlocked', subtitle: 'Your journey has just begun.')]);
+        
+        return OrbitGroupCard(
+          children: achievements.take(3).map((a) => OrbitInfoTile(
+            icon: _getAchievementIcon(a.tier),
+            title: a.title,
+            subtitle: a.description,
+            trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+          )).toList(),
+        );
+      },
+      loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+      error: (_, __) => const Text('Error loading achievements'),
+    );
+  }
+
+  IconData _getAchievementIcon(String tier) {
+    switch (tier.toLowerCase()) {
+      case 'bronze': return Icons.military_tech_outlined;
+      case 'silver': return Icons.military_tech;
+      case 'gold': return Icons.workspace_premium;
+      case 'orbit platinum': return Icons.stars;
+      default: return Icons.emoji_events;
+    }
+  }
+
+  Widget _buildQuickActionsGrid(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
@@ -236,23 +266,23 @@ class _TodayPageState extends State<TodayPage> {
           children: [
             OrbitActionCard(
               icon: Icons.add_task, 
-              title: 'Add Task',
-              onTap: () => _showFeedback('Tasks opened'),
+              title: 'Tasks',
+              onTap: () {}, // Handled by Navigation
             ),
             OrbitActionCard(
               icon: Icons.calendar_month, 
               title: 'Planner',
-              onTap: () => _showFeedback('Planner coming soon'),
+              onTap: () {},
             ),
             OrbitActionCard(
-              icon: Icons.note_alt, 
-              title: 'Notes',
-              onTap: () => _showFeedback('Notes opened'),
+              icon: Icons.repeat, 
+              title: 'Habits',
+              onTap: () {},
             ),
             OrbitActionCard(
-              icon: Icons.person, 
-              title: 'Profile',
-              onTap: () => _showFeedback('Profile opened'),
+              icon: Icons.timer, 
+              title: 'Focus',
+              onTap: () {},
             ),
           ],
         );
@@ -260,87 +290,7 @@ class _TodayPageState extends State<TodayPage> {
     );
   }
 
-  Widget _buildProgressStats(ThemeData theme, int completed, int remaining, int pct) {
-    return Row(
-      children: [
-        Expanded(
-          child: OrbitStatCard(
-            title: 'Completed',
-            value: '$completed',
-          ),
-        ),
-        const SizedBox(width: OrbitSpacing.md),
-        Expanded(
-          child: OrbitStatCard(
-            title: 'Remaining',
-            value: '$remaining',
-          ),
-        ),
-        const SizedBox(width: OrbitSpacing.md),
-        Expanded(
-          child: OrbitStatCard(
-            title: 'Done',
-            value: '$pct%',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMotivationCard(TextTheme textTheme, ColorScheme colorScheme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(OrbitSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary.withOpacity(0.05),
-            colorScheme.primary.withOpacity(0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: OrbitRadius.brMd,
-        border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.format_quote, color: colorScheme.primary.withOpacity(0.3), size: 32),
-          const SizedBox(height: OrbitSpacing.sm),
-          Text(
-            _quote,
-            textAlign: TextAlign.center,
-            style: textTheme.bodyLarge?.copyWith(
-              fontStyle: FontStyle.italic,
-              color: colorScheme.onSurface.withOpacity(0.8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentActivity(ColorScheme colorScheme) {
-    return OrbitGroupCard(
-      children: [
-        const OrbitInfoTile(
-          icon: Icons.check_circle_outline,
-          title: 'Task completed',
-          subtitle: 'Workout',
-        ),
-        Divider(height: 1, color: colorScheme.outline.withOpacity(0.1)),
-        const OrbitInfoTile(
-          icon: Icons.note_add_outlined,
-          title: 'Note added',
-          subtitle: 'Project Ideas',
-        ),
-        Divider(height: 1, color: colorScheme.outline.withOpacity(0.1)),
-        const OrbitInfoTile(
-          icon: Icons.calendar_today_outlined,
-          title: 'Planner updated',
-          subtitle: 'Gym session scheduled',
-        ),
-      ],
-    );
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

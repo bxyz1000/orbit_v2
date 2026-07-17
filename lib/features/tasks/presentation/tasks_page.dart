@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../domain/task.dart';
-import '../../../core/storage/storage_service.dart';
+import '../data/task_repository.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
@@ -11,11 +11,11 @@ import '../../../shared/widgets/orbit_search_bar.dart';
 enum TaskFilter { all, active, completed }
 
 class TasksPage extends StatefulWidget {
-  final StorageService storageService;
+  final TaskRepository taskRepository;
 
   const TasksPage({
     super.key,
-    required this.storageService,
+    required this.taskRepository,
   });
 
   @override
@@ -40,11 +40,13 @@ class _TasksPageState extends State<TasksPage> {
 
   Future<void> _loadTasks() async {
     try {
-      final tasks = await widget.storageService.loadTasks();
-      setState(() {
-        _tasks = tasks;
-        _isLoading = false;
-      });
+      final tasks = await widget.taskRepository.getAllTasks();
+      if (mounted) {
+        setState(() {
+          _tasks = tasks;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       _showError('Failed to load tasks');
     }
@@ -53,7 +55,11 @@ class _TasksPageState extends State<TasksPage> {
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -91,9 +97,9 @@ class _TasksPageState extends State<TasksPage> {
   void _submitTask() async {
     final title = _taskController.text.trim();
     if (title.isNotEmpty) {
-      final newTask = Task()..title = title..completed = false;
+      final newTask = Task.create(title: title);
       try {
-        await widget.storageService.saveTasks([newTask]);
+        await widget.taskRepository.saveTask(newTask);
         _taskController.clear();
         if (mounted) Navigator.pop(context);
         _loadTasks();
@@ -104,9 +110,13 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   void _toggleTask(Task task) async {
-    final updatedTask = task.copyWith(completed: !task.completed);
+    final isCompleting = !task.completed;
+    final updatedTask = task.copyWith(
+      completed: isCompleting,
+      completedAt: isCompleting ? DateTime.now() : null,
+    );
     try {
-      await widget.storageService.saveTasks([updatedTask]);
+      await widget.taskRepository.saveTask(updatedTask);
       _loadTasks();
     } catch (e) {
       _showError('Failed to update task');
@@ -115,7 +125,7 @@ class _TasksPageState extends State<TasksPage> {
 
   void _deleteTask(Task task) async {
     try {
-      await widget.storageService.deleteTask(task.id);
+      await widget.taskRepository.deleteTask(task.id);
       _loadTasks();
 
       if (mounted) {
@@ -127,7 +137,7 @@ class _TasksPageState extends State<TasksPage> {
             action: SnackBarAction(
               label: 'Undo',
               onPressed: () async {
-                await widget.storageService.saveTasks([task]);
+                await widget.taskRepository.saveTask(task);
                 _loadTasks();
               },
             ),
@@ -186,7 +196,7 @@ class _TasksPageState extends State<TasksPage> {
                 : filteredTasks.isEmpty
                     ? _buildNoResults(theme, colorScheme)
                     : ListView.builder(
-                        padding: const EdgeInsets.all(OrbitSpacing.lg),
+                        padding: const EdgeInsets.all(OrbitSpacing.xl),
                         itemCount: filteredTasks.length,
                         itemBuilder: (context, index) {
                           final task = filteredTasks[index];
@@ -275,15 +285,84 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
+  void _editTask(Task task) {
+    _taskController.text = task.title;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Task'),
+        content: TextField(
+          controller: _taskController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Task title',
+          ),
+          onSubmitted: (_) => _submitEditTask(task),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _taskController.clear();
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => _submitEditTask(task),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submitEditTask(Task task) async {
+    final title = _taskController.text.trim();
+    if (title.isNotEmpty) {
+      final updatedTask = task.copyWith(title: title);
+      try {
+        await widget.taskRepository.saveTask(updatedTask);
+        _taskController.clear();
+        if (mounted) Navigator.pop(context);
+        _loadTasks();
+      } catch (e) {
+        _showError('Failed to update task');
+      }
+    }
+  }
+
   Widget _buildTaskItem(Task task, ColorScheme colorScheme, ThemeData theme) {
     return Padding(
       key: ValueKey(task.id),
       padding: const EdgeInsets.only(bottom: OrbitSpacing.md),
       child: Dismissible(
-        key: Key(task.id.toString()),
-        direction: DismissDirection.endToStart,
-        onDismissed: (_) => _deleteTask(task),
+        key: Key('task_${task.id}_${task.completed}'),
+        direction: DismissDirection.horizontal,
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.startToEnd) {
+            _toggleTask(task);
+            return false;
+          }
+          return true;
+        },
+        onDismissed: (direction) {
+          if (direction == DismissDirection.endToStart) {
+            _deleteTask(task);
+          }
+        },
         background: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: OrbitSpacing.xl),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            borderRadius: OrbitRadius.brMd,
+          ),
+          child: Icon(
+            task.completed ? Icons.undo : Icons.check_circle_outline,
+            color: Colors.green,
+          ),
+        ),
+        secondaryBackground: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: OrbitSpacing.xl),
           decoration: BoxDecoration(
@@ -292,27 +371,31 @@ class _TasksPageState extends State<TasksPage> {
           ),
           child: Icon(Icons.delete_outline, color: colorScheme.error),
         ),
-        child: OrbitGroupCard(
-          children: [
-            OrbitInfoTile(
-              title: task.title,
-              titleStyle: theme.textTheme.bodyLarge?.copyWith(
-                decoration: task.completed ? TextDecoration.lineThrough : null,
-                color: task.completed ? colorScheme.onSurface.withOpacity(0.5) : null,
+        child: InkWell(
+          onLongPress: () => _editTask(task),
+          borderRadius: OrbitRadius.brMd,
+          child: OrbitGroupCard(
+            children: [
+              OrbitInfoTile(
+                title: task.title,
+                titleStyle: theme.textTheme.bodyLarge?.copyWith(
+                  decoration: task.completed ? TextDecoration.lineThrough : null,
+                  color: task.completed ? colorScheme.onSurface.withOpacity(0.5) : null,
+                ),
+                leading: Checkbox(
+                  value: task.completed,
+                  onChanged: (_) => _toggleTask(task),
+                  shape: RoundedRectangleBorder(borderRadius: OrbitRadius.brXs),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: colorScheme.onSurface.withOpacity(0.3),
+                  onPressed: () => _deleteTask(task),
+                  tooltip: 'Delete Task',
+                ),
               ),
-              leading: Checkbox(
-                value: task.completed,
-                onChanged: (_) => _toggleTask(task),
-                shape: RoundedRectangleBorder(borderRadius: OrbitRadius.brXs),
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20),
-                color: colorScheme.onSurface.withOpacity(0.3),
-                onPressed: () => _deleteTask(task),
-                tooltip: 'Delete Task',
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
