@@ -6,8 +6,10 @@ class PreferencesRepository {
 
   PreferencesRepository(this._isar);
 
+  IsarCollection<UserPreferences> get _collection => _isar.collection<UserPreferences>();
+
   Future<UserPreferences> getPreferences() async {
-    final prefs = await _isar.userPreferences.get(0);
+    final prefs = await _collection.get(0);
     if (prefs == null) {
       final defaultPrefs = UserPreferences.defaultValues();
       await savePreferences(defaultPrefs);
@@ -18,9 +20,9 @@ class PreferencesRepository {
 
   Future<void> savePreferences(UserPreferences prefs) async {
     await _isar.writeTxn(() async {
-      await _isar.userPreferences.put(prefs);
+      await _collection.put(prefs);
     });
   }
 
-  Stream<UserPreferences?> watchPreferences() => _isar.userPreferences.watchObject(0);
+  Stream<UserPreferences?> watchPreferences() => _collection.watchObject(0);
 }

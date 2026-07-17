@@ -8,6 +8,7 @@ final preferencesRepositoryProvider = Provider<PreferencesRepository>((ref) {
   return PreferencesRepository(IsarDatabase.instance);
 });
 
+// StreamProvider remains to watch the database changes reactively
 final userPreferencesProvider = StreamProvider<UserPreferences>((ref) {
   final repo = ref.watch(preferencesRepositoryProvider);
   return repo.watchPreferences().map((event) => event ?? UserPreferences.defaultValues());
@@ -28,17 +29,17 @@ final appThemeModeProvider = StateProvider<ThemeMode>((ref) {
   );
 });
 
-class PreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences>> {
-  final PreferencesRepository _repository;
-
-  PreferencesNotifier(this._repository) : super(const AsyncValue.loading()) {
+// Refactored to Notifier for better compatibility with Riverpod 3.0.3
+class PreferencesNotifier extends Notifier<AsyncValue<UserPreferences>> {
+  @override
+  AsyncValue<UserPreferences> build() {
     _load();
+    return const AsyncValue.loading();
   }
 
   Future<void> _load() async {
-    state = const AsyncValue.loading();
     try {
-      final prefs = await _repository.getPreferences();
+      final prefs = await ref.read(preferencesRepositoryProvider).getPreferences();
       state = AsyncValue.data(prefs);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -47,7 +48,7 @@ class PreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences>> {
 
   Future<void> updatePreferences(UserPreferences prefs) async {
     try {
-      await _repository.savePreferences(prefs);
+      await ref.read(preferencesRepositoryProvider).savePreferences(prefs);
       state = AsyncValue.data(prefs);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -55,14 +56,14 @@ class PreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences>> {
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
-    if (state.hasValue) {
-      final modeString = mode.name;
-      final newPrefs = state.value!.copyWith(themeMode: modeString);
+    final currentPrefs = state.value;
+    if (currentPrefs != null) {
+      final newPrefs = currentPrefs.copyWith(themeMode: mode.name);
       await updatePreferences(newPrefs);
     }
   }
 }
 
-final preferencesNotifierProvider = StateNotifierProvider<PreferencesNotifier, AsyncValue<UserPreferences>>((ref) {
-  return PreferencesNotifier(ref.watch(preferencesRepositoryProvider));
+final preferencesNotifierProvider = NotifierProvider<PreferencesNotifier, AsyncValue<UserPreferences>>(() {
+  return PreferencesNotifier();
 });
