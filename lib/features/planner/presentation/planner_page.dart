@@ -4,6 +4,7 @@ import '../data/planner_repository.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
+import '../../../shared/widgets/orbit_info_tile.dart';
 import 'widgets/orbit_calendar.dart';
 
 class PlannerPage extends StatefulWidget {
@@ -178,7 +179,7 @@ class _PlannerPageState extends State<PlannerPage> {
                         controller: _startTimeController,
                         decoration: const InputDecoration(labelText: 'Start Time'),
                         readOnly: true,
-                        onTap: () => _selectTime(context, _startTimeController),
+                        onTap: () => _selectTime(context, _startTimeController, setDialogState),
                       ),
                     ),
                     const SizedBox(width: OrbitSpacing.md),
@@ -187,7 +188,7 @@ class _PlannerPageState extends State<PlannerPage> {
                         controller: _endTimeController,
                         decoration: const InputDecoration(labelText: 'End Time'),
                         readOnly: true,
-                        onTap: () => _selectTime(context, _endTimeController),
+                        onTap: () => _selectTime(context, _endTimeController, setDialogState),
                       ),
                     ),
                   ],
@@ -246,13 +247,13 @@ class _PlannerPageState extends State<PlannerPage> {
     );
   }
 
-  Future<void> _selectTime(BuildContext context, TextEditingController controller) async {
+  Future<void> _selectTime(BuildContext context, TextEditingController controller, StateSetter setDialogState) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
     if (picked != null && mounted) {
-      setState(() {
+      setDialogState(() {
         controller.text = picked.format(context);
       });
     }
@@ -321,6 +322,16 @@ class _PlannerPageState extends State<PlannerPage> {
       }
     } catch (e) {
       _showError('Failed to delete event');
+    }
+  }
+
+  void _toggleEventCompletion(PlannerEvent event) async {
+    final updatedEvent = event.copyWith(isCompleted: !event.isCompleted);
+    try {
+      await widget.plannerRepository.saveEvent(updatedEvent);
+      _loadEvents();
+    } catch (e) {
+      _showError('Failed to update event');
     }
   }
 
@@ -435,16 +446,6 @@ class _PlannerPageState extends State<PlannerPage> {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  void _toggleEventCompletion(PlannerEvent event) async {
-    final updatedEvent = event.copyWith(isCompleted: !event.isCompleted);
-    try {
-      await widget.plannerRepository.saveEvent(updatedEvent);
-      _loadEvents();
-    } catch (e) {
-      _showError('Failed to update event');
-    }
   }
 
   Widget _buildEventCard(PlannerEvent event, TextTheme textTheme, ColorScheme colorScheme) {

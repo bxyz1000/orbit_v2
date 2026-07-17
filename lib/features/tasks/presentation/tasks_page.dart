@@ -64,18 +64,21 @@ class _TasksPageState extends State<TasksPage> {
     }
   }
 
-  void _addTask() {
+  void _showTaskDialog([Task? task]) {
+    final isEditing = task != null;
+    _taskController.text = task?.title ?? '';
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Task'),
+        title: Text(isEditing ? 'Edit Task' : 'Add Task'),
         content: TextField(
           controller: _taskController,
           autofocus: true,
           decoration: const InputDecoration(
             hintText: 'Task title',
           ),
-          onSubmitted: (_) => _submitTask(),
+          onSubmitted: (_) => _submitTask(task),
         ),
         actions: [
           TextButton(
@@ -86,20 +89,22 @@ class _TasksPageState extends State<TasksPage> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: _submitTask,
-            child: const Text('Add'),
+            onPressed: () => _submitTask(task),
+            child: Text(isEditing ? 'Save' : 'Add'),
           ),
         ],
       ),
     );
   }
 
-  void _submitTask() async {
+  void _submitTask([Task? existingTask]) async {
     final title = _taskController.text.trim();
     if (title.isNotEmpty) {
-      final newTask = Task.create(title: title);
+      final task = existingTask != null 
+          ? existingTask.copyWith(title: title)
+          : Task.create(title: title);
       try {
-        await widget.taskRepository.saveTask(newTask);
+        await widget.taskRepository.saveTask(task);
         _taskController.clear();
         if (mounted) Navigator.pop(context);
         _loadTasks();
@@ -207,7 +212,7 @@ class _TasksPageState extends State<TasksPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addTask,
+        onPressed: () => _showTaskDialog(),
         tooltip: 'Add Task',
         child: const Icon(Icons.add),
       ),
@@ -285,52 +290,6 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  void _editTask(Task task) {
-    _taskController.text = task.title;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Task'),
-        content: TextField(
-          controller: _taskController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Task title',
-          ),
-          onSubmitted: (_) => _submitEditTask(task),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _taskController.clear();
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => _submitEditTask(task),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _submitEditTask(Task task) async {
-    final title = _taskController.text.trim();
-    if (title.isNotEmpty) {
-      final updatedTask = task.copyWith(title: title);
-      try {
-        await widget.taskRepository.saveTask(updatedTask);
-        _taskController.clear();
-        if (mounted) Navigator.pop(context);
-        _loadTasks();
-      } catch (e) {
-        _showError('Failed to update task');
-      }
-    }
-  }
-
   Widget _buildTaskItem(Task task, ColorScheme colorScheme, ThemeData theme) {
     return Padding(
       key: ValueKey(task.id),
@@ -372,7 +331,7 @@ class _TasksPageState extends State<TasksPage> {
           child: Icon(Icons.delete_outline, color: colorScheme.error),
         ),
         child: InkWell(
-          onLongPress: () => _editTask(task),
+          onLongPress: () => _showTaskDialog(task),
           borderRadius: OrbitRadius.brMd,
           child: OrbitGroupCard(
             children: [

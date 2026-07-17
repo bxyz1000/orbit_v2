@@ -61,22 +61,25 @@ class _NotesPageState extends State<NotesPage> {
     }
   }
 
-  void _addNote() {
+  void _showNoteDialog([Note? note]) {
+    final isEditing = note != null;
+    _titleController.text = note?.title ?? '';
+    _contentController.text = note?.content ?? '';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Note'),
+        title: Text(isEditing ? 'Edit Note' : 'Add Note'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _titleController,
-                autofocus: true,
+                autofocus: !isEditing,
                 decoration: const InputDecoration(
                   hintText: 'Title',
                 ),
-                onSubmitted: (_) => _submitNote(),
               ),
               const SizedBox(height: OrbitSpacing.md),
               TextField(
@@ -84,7 +87,7 @@ class _NotesPageState extends State<NotesPage> {
                 decoration: const InputDecoration(
                   hintText: 'Content',
                 ),
-                maxLines: 5,
+                maxLines: 8,
               ),
             ],
           ),
@@ -98,7 +101,7 @@ class _NotesPageState extends State<NotesPage> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: _submitNote,
+            onPressed: () => _submitNote(note),
             child: const Text('Save'),
           ),
         ],
@@ -106,17 +109,19 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
-  void _submitNote() async {
+  void _submitNote([Note? existingNote]) async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
     if (title.isNotEmpty) {
-      final newNote = Note.create(
-        title: title,
-        content: content,
-        createdAt: DateTime.now(),
-      );
+      final note = existingNote != null
+          ? existingNote.copyWith(title: title, content: content)
+          : Note.create(
+              title: title,
+              content: content,
+              createdAt: DateTime.now(),
+            );
       try {
-        await widget.noteRepository.saveNote(newNote);
+        await widget.noteRepository.saveNote(note);
         _clearControllers();
         if (mounted) Navigator.pop(context);
         _loadNotes();
@@ -150,6 +155,35 @@ class _NotesPageState extends State<NotesPage> {
     } catch (e) {
       _showError('Failed to delete note');
     }
+  }
+
+  void _showNoteMenu(Note note) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(context);
+                _showNoteDialog(note);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteNote(note);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _clearControllers() {
@@ -223,103 +257,9 @@ class _NotesPageState extends State<NotesPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addNote,
+        onPressed: () => _showNoteDialog(),
         tooltip: 'Add Note',
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  void _editNote(Note note) {
-    _titleController.text = note.title;
-    _contentController.text = note.content;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Note'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _titleController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Title',
-                ),
-              ),
-              const SizedBox(height: OrbitSpacing.md),
-              TextField(
-                controller: _contentController,
-                decoration: const InputDecoration(
-                  hintText: 'Content',
-                ),
-                maxLines: 5,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _clearControllers();
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => _submitEditNote(note),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _submitEditNote(Note note) async {
-    final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
-    if (title.isNotEmpty) {
-      final updatedNote = note.copyWith(
-        title: title,
-        content: content,
-      );
-      try {
-        await widget.noteRepository.saveNote(updatedNote);
-        _clearControllers();
-        if (mounted) Navigator.pop(context);
-        _loadNotes();
-      } catch (e) {
-        _showError('Failed to update note');
-      }
-    }
-  }
-
-  void _showNoteMenu(Note note) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit'),
-              onTap: () {
-                Navigator.pop(context);
-                _editNote(note);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Delete', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteNote(note);
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -328,7 +268,7 @@ class _NotesPageState extends State<NotesPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: OrbitSpacing.md),
       child: InkWell(
-        onTap: () => _editNote(note),
+        onTap: () => _showNoteDialog(note),
         onLongPress: () => _showNoteMenu(note),
         borderRadius: OrbitRadius.brMd,
         child: OrbitGroupCard(
@@ -351,8 +291,8 @@ class _NotesPageState extends State<NotesPage> {
                   Text(
                     _formatDate(note.createdAt),
                     style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.4),
-                  ),
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
                   ),
                 ],
               ),
