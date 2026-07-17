@@ -1,6 +1,5 @@
 import '../entities/personal_record.dart';
 import '../entities/achievement.dart';
-import '../entities/daily_score.dart';
 
 abstract class MotivationService {
   /// Calculates the current daily streak considering the 5-day grace period.

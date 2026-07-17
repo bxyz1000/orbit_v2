@@ -168,7 +168,7 @@ class _HabitsPageState extends State<HabitsPage> {
                         color: color,
                         shape: BoxShape.circle,
                         border: selectedColor == color ? Border.all(color: Colors.white, width: 2) : null,
-                        boxShadow: selectedColor == color ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 4)] : null,
+                        boxShadow: selectedColor == color ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 4)] : null,
                       ),
                     ),
                   )).toList(),
@@ -185,7 +185,8 @@ class _HabitsPageState extends State<HabitsPage> {
                     ? habit.copyWith(title: titleController.text, icon: selectedIcon, color: selectedColor)
                     : Habit.create(title: titleController.text, icon: selectedIcon, color: selectedColor);
                   await widget.habitRepository.saveHabit(newHabit);
-                  if (mounted) Navigator.pop(context);
+                  if (!mounted) return;
+                  Navigator.pop(context);
                   _loadHabits();
                 }
               },
@@ -235,7 +236,7 @@ class _HabitsPageState extends State<HabitsPage> {
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: OrbitSpacing.xl),
           decoration: BoxDecoration(
-            color: colorScheme.error.withOpacity(0.1),
+            color: colorScheme.error.withValues(alpha: 0.1),
             borderRadius: OrbitRadius.brMd,
           ),
           child: Icon(Icons.delete_outline, color: colorScheme.error),
@@ -251,7 +252,7 @@ class _HabitsPageState extends State<HabitsPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(OrbitSpacing.sm),
                   decoration: BoxDecoration(
-                    color: habit.color.withOpacity(0.1),
+                    color: habit.color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(habit.icon, color: habit.color, size: 20),
@@ -268,7 +269,7 @@ class _HabitsPageState extends State<HabitsPage> {
                 ),
                 trailing: Icon(
                   habit.completedToday ? Icons.check_circle : Icons.circle_outlined,
-                  color: habit.completedToday ? Colors.green : colorScheme.onSurface.withOpacity(0.2),
+                  color: habit.completedToday ? Colors.green : colorScheme.onSurface.withValues(alpha: 0.2),
                 ),
               ),
             ],
@@ -296,7 +297,7 @@ class _HabitsPageState extends State<HabitsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.repeat, size: 64, color: colorScheme.primary.withOpacity(0.1)),
+            Icon(Icons.repeat, size: 64, color: colorScheme.primary.withValues(alpha: 0.1)),
             const SizedBox(height: OrbitSpacing.lg),
             Text(
               "No habits yet",
@@ -307,7 +308,7 @@ class _HabitsPageState extends State<HabitsPage> {
             Text(
               "Create your first habit to build consistency.",
               style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),

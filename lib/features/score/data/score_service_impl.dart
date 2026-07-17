@@ -110,9 +110,13 @@ class ScoreServiceImpl implements ScoreService {
     // 8. Consistency Multiplier (Streak)
     final streak = await _calculateStreak(startOfDay);
     double multiplier = 1.0;
-    if (streak >= 100) multiplier = 1.5;
-    else if (streak >= 30) multiplier = 1.2;
-    else if (streak >= 7) multiplier = 1.1;
+    if (streak >= 100) {
+      multiplier = 1.5;
+    } else if (streak >= 30) {
+      multiplier = 1.2;
+    } else if (streak >= 7) {
+      multiplier = 1.1;
+    }
 
     // 9. Bonuses (Calculated based on previous days)
     int bonusScore = 0;
@@ -126,9 +130,13 @@ class ScoreServiceImpl implements ScoreService {
     }
 
     // Streak Milestones
-    if (streak == 7) bonusScore += 100;
-    else if (streak == 30) bonusScore += 500;
-    else if (streak == 100) bonusScore += 2000;
+    if (streak == 7) {
+      bonusScore += 100;
+    } else if (streak == 30) {
+      bonusScore += 500;
+    } else if (streak == 100) {
+      bonusScore += 2000;
+    }
 
     // Perfect Balance
     bool isBalanced = completedTasks >= 3 && completions.isNotEmpty && focusMinutes >= 25 && stepsPoints >= 50;
@@ -173,7 +181,6 @@ class ScoreServiceImpl implements ScoreService {
 
   @override
   Future<void> recalculateHistoricalScores() async {
-    final scores = await _scoreRepository.watchAllScores().first; // Mocking retrieval
     // Logic to iterate through history and re-run calculateActiveScore
   }
 

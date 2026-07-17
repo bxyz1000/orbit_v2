@@ -17,9 +17,8 @@ class FocusSession {
     required this.duration,
     this.completed = true,
     DateTime? startedAt,
-    DateTime? endedAt,
+    this.endedAt,
   }) {
     this.startedAt = startedAt ?? DateTime.now();
-    this.endedAt = endedAt;
   }
 }

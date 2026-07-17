@@ -230,7 +230,7 @@ class _TasksPageState extends State<TasksPage> {
               Text(
                 '$completed Completed',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.6),
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -241,7 +241,7 @@ class _TasksPageState extends State<TasksPage> {
             child: LinearProgressIndicator(
               value: progress.isNaN ? 0 : progress,
               minHeight: 8,
-              backgroundColor: colorScheme.primary.withOpacity(0.1),
+              backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             ),
           ),
         ],
@@ -354,7 +354,7 @@ class _TasksPageState extends State<TasksPage> {
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.only(left: OrbitSpacing.xl),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
+            color: Colors.green.withValues(alpha: 0.1),
             borderRadius: OrbitRadius.brMd,
           ),
           child: Icon(
@@ -366,7 +366,7 @@ class _TasksPageState extends State<TasksPage> {
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: OrbitSpacing.xl),
           decoration: BoxDecoration(
-            color: colorScheme.error.withOpacity(0.1),
+            color: colorScheme.error.withValues(alpha: 0.1),
             borderRadius: OrbitRadius.brMd,
           ),
           child: Icon(Icons.delete_outline, color: colorScheme.error),
@@ -380,7 +380,7 @@ class _TasksPageState extends State<TasksPage> {
                 title: task.title,
                 titleStyle: theme.textTheme.bodyLarge?.copyWith(
                   decoration: task.completed ? TextDecoration.lineThrough : null,
-                  color: task.completed ? colorScheme.onSurface.withOpacity(0.5) : null,
+                  color: task.completed ? colorScheme.onSurface.withValues(alpha: 0.5) : null,
                 ),
                 leading: Checkbox(
                   value: task.completed,
@@ -389,7 +389,7 @@ class _TasksPageState extends State<TasksPage> {
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
-                  color: colorScheme.onSurface.withOpacity(0.3),
+                  color: colorScheme.onSurface.withValues(alpha: 0.3),
                   onPressed: () => _deleteTask(task),
                   tooltip: 'Delete Task',
                 ),
@@ -407,7 +407,7 @@ class _TasksPageState extends State<TasksPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.task_alt, size: 64, color: colorScheme.primary.withOpacity(0.1)),
+            Icon(Icons.task_alt, size: 64, color: colorScheme.primary.withValues(alpha: 0.1)),
             const SizedBox(height: OrbitSpacing.lg),
             const OrbitSectionHeader(
               title: "No tasks yet",
@@ -424,7 +424,7 @@ class _TasksPageState extends State<TasksPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off_outlined, size: 48, color: colorScheme.onSurface.withOpacity(0.2)),
+          Icon(Icons.search_off_outlined, size: 48, color: colorScheme.onSurface.withValues(alpha: 0.2)),
           const SizedBox(height: OrbitSpacing.lg),
           Text(
             'No matching results',
@@ -434,7 +434,7 @@ class _TasksPageState extends State<TasksPage> {
           Text(
             'Try another keyword.',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.5),
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],

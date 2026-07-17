@@ -92,7 +92,7 @@ class OrbitCalendar extends StatelessWidget {
                         width: 4,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: isToday ? colorScheme.primary : colorScheme.primary.withOpacity(0.5),
+                          color: isToday ? colorScheme.primary : colorScheme.primary.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -154,7 +154,7 @@ class OrbitCalendar extends StatelessWidget {
           child: Text(
             day,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.5),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               fontWeight: FontWeight.bold,
             ),
           ),

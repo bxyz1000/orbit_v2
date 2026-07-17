@@ -129,14 +129,14 @@ class _FocusPageState extends State<FocusPage> {
   }
 
   String _formatTime(int seconds) {
-    final m = (seconds // 60).toString().padLeft(2, '0');
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
   }
 
   String _formatDuration(int totalMinutes) {
     if (totalMinutes < 60) return '${totalMinutes}m';
-    final h = totalMinutes // 60;
+    final h = totalMinutes ~/ 60;
     final m = totalMinutes % 60;
     return '${h}h ${m}m';
   }
@@ -195,7 +195,7 @@ class _FocusPageState extends State<FocusPage> {
           child: CircularProgressIndicator(
             value: _isActive ? progress : 0,
             strokeWidth: 12,
-            backgroundColor: colorScheme.primary.withOpacity(0.1),
+            backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             strokeCap: StrokeCap.round,
           ),
         ),
@@ -212,7 +212,7 @@ class _FocusPageState extends State<FocusPage> {
             Text(
               _isActive ? (_isPaused ? 'Paused' : 'Focusing') : 'Ready',
               style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.5),
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -300,7 +300,7 @@ class _FocusPageState extends State<FocusPage> {
           padding: const EdgeInsets.all(OrbitSpacing.xl),
           child: Column(
             children: [
-              Icon(Icons.history, size: 48, color: colorScheme.onSurface.withOpacity(0.1)),
+              Icon(Icons.history, size: 48, color: colorScheme.onSurface.withValues(alpha: 0.1)),
               const SizedBox(height: OrbitSpacing.md),
               const Text('No focus sessions yet.'),
               const Text('Start your first session.'),

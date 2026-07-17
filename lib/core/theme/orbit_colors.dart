@@ -44,7 +44,7 @@ class OrbitColors {
     seedColor: blue500,
     brightness: Brightness.dark,
     surface: darkBackground,
-    onSurface: Colors.white.withOpacity(0.9),
+    onSurface: Colors.white.withValues(alpha: 0.9),
     primary: blue500,
     onPrimary: white,
     secondary: Colors.white,
@@ -54,7 +54,7 @@ class OrbitColors {
     outline: Colors.white24,
   ).copyWith(
     surface: darkBackground,
-    onSurface: Colors.white.withOpacity(0.9),
+    onSurface: Colors.white.withValues(alpha: 0.9),
     surfaceContainerHighest: darkSurface,
   );
 }

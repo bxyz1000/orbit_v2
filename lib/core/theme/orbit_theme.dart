@@ -77,7 +77,7 @@ class OrbitTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: OrbitRadius.brMd,
-          side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -85,11 +85,11 @@ class OrbitTheme {
         fillColor: OrbitColors.darkSurface,
         border: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,

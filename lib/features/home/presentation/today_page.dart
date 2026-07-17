@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_spacing.dart';
@@ -118,7 +117,7 @@ class TodayPage extends ConsumerWidget {
           children: [
             Text(_getGreeting(), style: textTheme.headlineLarge),
             const SizedBox(height: OrbitSpacing.xs),
-            Text(dateString, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface.withOpacity(0.6))),
+            Text(dateString, style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6))),
           ],
         ),
         Column(
@@ -132,7 +131,7 @@ class TodayPage extends ConsumerWidget {
                   color: colorScheme.primary,
                   borderRadius: OrbitRadius.brCircular,
                   boxShadow: [
-                    BoxShadow(color: colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
+                    BoxShadow(color: colorScheme.primary.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
                   ],
                 ),
                 child: Text(
@@ -141,7 +140,7 @@ class TodayPage extends ConsumerWidget {
                 ),
               ),
               loading: () => const SizedBox(width: 40, height: 40, child: CircularProgressIndicator(strokeWidth: 2)),
-              error: (_, __) => const Icon(Icons.error_outline),
+              error: (_, _) => const Icon(Icons.error_outline),
             ),
             const SizedBox(height: OrbitSpacing.sm),
             streakAsync.when(
@@ -153,7 +152,7 @@ class TodayPage extends ConsumerWidget {
                 ],
               ),
               loading: () => const SizedBox(),
-              error: (_, __) => const SizedBox(),
+              error: (_, _) => const SizedBox(),
             ),
           ],
         ),
@@ -162,9 +161,6 @@ class TodayPage extends ConsumerWidget {
   }
 
   Widget _buildFocusOverview(BuildContext context, DailyScore score) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
     // Derive minutes from score (v1.1 formula: 25m = 20pts)
     final focusMinutes = (score.focusScore * 25 / 20).round();
     final tasksCompleted = score.taskScore ~/ 10;
@@ -219,7 +215,7 @@ class TodayPage extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-      error: (_, __) => const Text('Error loading records'),
+      error: (_, _) => const Text('Error loading records'),
     );
   }
 
@@ -238,7 +234,7 @@ class TodayPage extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-      error: (_, __) => const Text('Error loading achievements'),
+      error: (_, _) => const Text('Error loading achievements'),
     );
   }
 

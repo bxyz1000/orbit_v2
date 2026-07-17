@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/orbit_spacing.dart';
 import '../../core/theme/orbit_radius.dart';
 
 class OrbitSearchBar extends StatefulWidget {
@@ -67,7 +66,7 @@ class _OrbitSearchBarState extends State<OrbitSearchBar> {
             : null,
         contentPadding: const EdgeInsets.symmetric(vertical: 0),
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
           borderSide: BorderSide.none,

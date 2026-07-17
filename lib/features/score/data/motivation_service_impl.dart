@@ -64,8 +64,7 @@ class MotivationServiceImpl implements MotivationService {
 
   @override
   Future<void> checkPersonalRecords(DateTime date) async {
-    final score = await _scoreService.getScoreForDate(date);
-    if (score == null) return;
+    final score = await _scoreService.calculateActiveScore(date);
 
     await _recordRepository.updateIfHigher('highest_daily_score', score.totalScore.toDouble(), date);
     

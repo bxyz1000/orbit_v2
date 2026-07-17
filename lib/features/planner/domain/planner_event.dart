@@ -28,6 +28,7 @@ class PlannerEvent {
     required this.endTime,
     required this.title,
     this.description,
+    this.isCompleted = false,
     required Color color,
   }) {
     this.color = color;
@@ -40,6 +41,7 @@ class PlannerEvent {
     String? endTime,
     String? title,
     String? description,
+    bool? isCompleted,
     Color? color,
   }) {
     final event = PlannerEvent()
@@ -49,6 +51,7 @@ class PlannerEvent {
       ..endTime = endTime ?? this.endTime
       ..title = title ?? this.title
       ..description = description ?? this.description
+      ..isCompleted = isCompleted ?? this.isCompleted
       ..color = color ?? this.color;
     return event;
   }

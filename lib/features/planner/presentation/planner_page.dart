@@ -203,7 +203,7 @@ class _PlannerPageState extends State<PlannerPage> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _eventColors.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: OrbitSpacing.sm),
+                    separatorBuilder: (_, _) => const SizedBox(width: OrbitSpacing.sm),
                     itemBuilder: (context, index) {
                       final color = _eventColors[index];
                       final isSelected = _selectedColor == color;
@@ -216,7 +216,7 @@ class _PlannerPageState extends State<PlannerPage> {
                             color: color,
                             shape: BoxShape.circle,
                             border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
-                            boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8)] : null,
+                            boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)] : null,
                           ),
                         ),
                       );
@@ -391,12 +391,12 @@ class _PlannerPageState extends State<PlannerPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.event_note, size: 64, color: colorScheme.onSurface.withOpacity(0.1)),
+                    Icon(Icons.event_note, size: 64, color: colorScheme.onSurface.withValues(alpha: 0.1)),
                     const SizedBox(height: OrbitSpacing.md),
                     Text(
                       'No events scheduled',
                       style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.4),
+                        color: colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                     ),
                   ],
@@ -459,7 +459,7 @@ class _PlannerPageState extends State<PlannerPage> {
           decoration: BoxDecoration(
             color: colorScheme.surface,
             borderRadius: OrbitRadius.brMd,
-            border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -483,7 +483,7 @@ class _PlannerPageState extends State<PlannerPage> {
                     Text(
                       '${event.startTime} - ${event.endTime}',
                       style: textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.6),
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.bold,
                         decoration: event.isCompleted ? TextDecoration.lineThrough : null,
                       ),
@@ -493,7 +493,7 @@ class _PlannerPageState extends State<PlannerPage> {
                       event.title,
                       style: textTheme.titleMedium?.copyWith(
                         decoration: event.isCompleted ? TextDecoration.lineThrough : null,
-                        color: event.isCompleted ? colorScheme.onSurface.withOpacity(0.5) : null,
+                        color: event.isCompleted ? colorScheme.onSurface.withValues(alpha: 0.5) : null,
                       ),
                     ),
                     if (event.description != null && event.description!.isNotEmpty) ...[
@@ -501,7 +501,7 @@ class _PlannerPageState extends State<PlannerPage> {
                       Text(
                         event.description!,
                         style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.5),
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -510,7 +510,7 @@ class _PlannerPageState extends State<PlannerPage> {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, size: 20, color: colorScheme.onSurface.withOpacity(0.2)),
+              Icon(Icons.chevron_right, size: 20, color: colorScheme.onSurface.withValues(alpha: 0.2)),
             ],
           ),
         ),

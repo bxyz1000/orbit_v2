@@ -28,7 +28,7 @@ class OrbitActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: OrbitRadius.brMd,
-          border: Border.all(color: colorScheme.outline.withOpacity(0.5)),
+          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
         ),
         child: Material(
           color: Colors.transparent,

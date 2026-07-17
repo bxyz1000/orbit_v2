@@ -125,7 +125,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.analytics_outlined, size: 64, color: Theme.of(context).colorScheme.primary.withOpacity(0.1)),
+              Icon(Icons.analytics_outlined, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)),
               const SizedBox(height: OrbitSpacing.lg),
               const Text('No analytics available yet.'),
             ],
@@ -176,13 +176,13 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
               children: [
                 Text('Productivity Score', style: theme.textTheme.titleMedium),
                 Text('Based on your daily activity', 
-                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6))),
+                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
             Container(
               padding: const EdgeInsets.all(OrbitSpacing.lg),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.1),
+                color: colorScheme.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -198,7 +198,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
         const SizedBox(height: OrbitSpacing.lg),
         LinearProgressIndicator(
           value: _stats!.productivityScore / 100,
-          backgroundColor: colorScheme.primary.withOpacity(0.1),
+          backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: OrbitRadius.brCircular,
         ),
       ],
@@ -265,7 +265,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
       width: 60,
       height: 8,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: OrbitRadius.brCircular,
       ),
       alignment: Alignment.centerLeft,
@@ -299,10 +299,10 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
           icon: achievement.icon,
           trailing: Icon(
             achievement.isUnlocked ? Icons.check_circle : Icons.lock_outline,
-            color: achievement.isUnlocked ? Colors.green : colorScheme.onSurface.withOpacity(0.2),
+            color: achievement.isUnlocked ? Colors.green : colorScheme.onSurface.withValues(alpha: 0.2),
           ),
           titleStyle: theme.textTheme.bodyMedium?.copyWith(
-            color: achievement.isUnlocked ? null : colorScheme.onSurface.withOpacity(0.4),
+            color: achievement.isUnlocked ? null : colorScheme.onSurface.withValues(alpha: 0.4),
           ),
         );
       }).toList(),
