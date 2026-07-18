@@ -14,7 +14,7 @@ final userPreferencesProvider = StreamProvider<UserPreferences>((ref) {
   return repo.watchPreferences().map((event) => event ?? UserPreferences.defaultValues());
 });
 
-final appThemeModeProvider = StateProvider<ThemeMode>((ref) {
+final appThemeModeProvider = Provider<ThemeMode>((ref) {
   final prefsAsync = ref.watch(userPreferencesProvider);
   return prefsAsync.when(
     data: (prefs) {

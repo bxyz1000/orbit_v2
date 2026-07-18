@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/orbit_theme.dart';
-import '../features/home/presentation/home_page.dart';
+import 'app_shell.dart';
 import '../features/settings/presentation/providers/preferences_providers.dart';
 
 class OrbitApp extends ConsumerWidget {
@@ -17,7 +17,7 @@ class OrbitApp extends ConsumerWidget {
       theme: OrbitTheme.light,
       darkTheme: OrbitTheme.dark,
       themeMode: themeMode,
-      home: const HomePage(),
+      home: const AppShell(),
     );
   }
 }
