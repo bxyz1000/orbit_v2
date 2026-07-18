@@ -415,8 +415,8 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
     final healthSnapshotAsync = ref.watch(todayHealthSnapshotProvider);
 
     debugPrint('OrbitHome: [ProgressGrid] Rebuilding grid...');
-    if (healthSnapshotAsync is AsyncData) {
-      debugPrint('OrbitHome: [ProgressGrid] Data: steps=${healthSnapshotAsync.value.steps}');
+    if (healthSnapshotAsync.hasValue) {
+      debugPrint('OrbitHome: [ProgressGrid] Data: steps=${healthSnapshotAsync.value?.steps}');
     }
 
     return Column(
