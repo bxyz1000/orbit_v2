@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 import '../domain/health_metrics.dart';
 import '../domain/repositories/i_health_service.dart';
@@ -31,15 +32,23 @@ class HealthRepository {
   }
 
   Future<void> syncHealthData(DateTime date) async {
-    if (_healthService == null) return;
+    if (_healthService == null) {
+      debugPrint('HealthRepo: [WARN] Sync skipped - HealthService is null');
+      return;
+    }
     
+    debugPrint('HealthRepo: [1] Starting sync for $date');
     final isAuthorized = await _healthService!.isAuthorized();
-    if (!isAuthorized) return;
+    if (!isAuthorized) {
+      debugPrint('HealthRepo: [WARN] Sync skipped - Not authorized');
+      return;
+    }
 
     final snapshot = await _healthService!.getHealthSnapshot(date);
+    debugPrint('HealthRepo: [2] Snapshot received from service: steps=${snapshot.steps}');
     
     await _isar.writeTxn(() async {
-      // Save Steps, Calories, Distance
+      debugPrint('HealthRepo: [3] Writing StepLog to Isar (Count: ${snapshot.steps})');
       final stepLog = StepLog.create(
         date: DateTime(date.year, date.month, date.day), 
         count: snapshot.steps,
@@ -48,14 +57,17 @@ class HealthRepository {
       );
       await _isar.stepLogs.put(stepLog);
 
-      // Save Sleep
       if (snapshot.sleepMinutes > 0) {
-        final sleepLog = SleepLog.create(date: DateTime(date.year, date.month, date.day), durationMinutes: snapshot.sleepMinutes);
+        debugPrint('HealthRepo: [4] Writing SleepLog to Isar (${snapshot.sleepMinutes} min)');
+        final sleepLog = SleepLog.create(
+          date: DateTime(date.year, date.month, date.day), 
+          durationMinutes: snapshot.sleepMinutes
+        );
         await _isar.sleepLogs.put(sleepLog);
       }
 
-      // Save Workouts (This is a bit more complex as we might have multiple, but for now we'll just log a summary if minutes > 0)
       if (snapshot.workoutMinutes > 0) {
+        debugPrint('HealthRepo: [5] Writing WorkoutLog to Isar (${snapshot.workoutMinutes} min)');
         final workoutLog = WorkoutLog.create(
           date: date, 
           durationMinutes: snapshot.workoutMinutes,
@@ -64,6 +76,7 @@ class HealthRepository {
         await _isar.workoutLogs.put(workoutLog);
       }
     });
+    debugPrint('HealthRepo: [6] Sync transaction successfully committed');
   }
 
   Future<void> saveSteps(StepLog log) async {

@@ -49,7 +49,10 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
 
   Future<void> _refreshHealth() async {
     debugPrint('OrbitHome: Refreshing health data on resume/init');
-    ref.read(healthSyncProvider);
+    ref.invalidate(healthSyncProvider);
+    ref.invalidate(todayHealthSnapshotProvider);
+    await ref.read(healthSyncProvider.future);
+    debugPrint('OrbitHome: Health sync completed');
   }
 
   @override
@@ -81,7 +84,9 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
             ref.invalidate(pendingTasksProvider);
             ref.invalidate(todayEventsProvider);
             ref.invalidate(healthSyncProvider);
+            ref.invalidate(todayHealthSnapshotProvider);
             await ref.read(healthSyncProvider.future);
+            debugPrint('OrbitHome: Pull-to-refresh completed');
           },
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(OrbitSpacing.xl),
@@ -167,8 +172,14 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Health Connect authorized!')),
                     );
+                    // Force refresh all health related data
                     ref.invalidate(healthAuthorizationProvider);
-                    ref.read(healthSyncProvider);
+                    ref.invalidate(todayHealthSnapshotProvider);
+                    ref.invalidate(currentDailyScoreProvider);
+                    
+                    // Trigger a sync
+                    await ref.read(healthSyncProvider.future);
+                    debugPrint('OrbitHome: Health sync after authorization completed');
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Health Connect authorization failed or denied.')),
@@ -403,6 +414,11 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
     final sessionsAsync = ref.watch(todaySessionsProvider);
     final healthSnapshotAsync = ref.watch(todayHealthSnapshotProvider);
 
+    debugPrint('OrbitHome: [ProgressGrid] Rebuilding grid...');
+    if (healthSnapshotAsync is AsyncData) {
+      debugPrint('OrbitHome: [ProgressGrid] Data: steps=${healthSnapshotAsync.value.steps}');
+    }
+
     return Column(
       children: [
         Row(
@@ -419,7 +435,10 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                   );
                 },
                 loading: () => const OrbitStatCard(title: 'Tasks', value: '...', icon: Icons.task_alt),
-                error: (_, __) => const OrbitStatCard(title: 'Tasks', value: 'Err', icon: Icons.task_alt),
+                error: (err, _) {
+                  debugPrint('OrbitHome: [ProgressGrid] Tasks Error: $err');
+                  return const OrbitStatCard(title: 'Tasks', value: 'Err', icon: Icons.task_alt);
+                },
               ),
             ),
             const SizedBox(width: OrbitSpacing.md),
@@ -434,7 +453,10 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                   );
                 },
                 loading: () => const OrbitStatCard(title: 'Focus', value: '...', icon: Icons.timer),
-                error: (_, __) => const OrbitStatCard(title: 'Focus', value: 'Err', icon: Icons.timer),
+                error: (err, _) {
+                  debugPrint('OrbitHome: [ProgressGrid] Focus Error: $err');
+                  return const OrbitStatCard(title: 'Focus', value: 'Err', icon: Icons.timer);
+                },
               ),
             ),
           ],
@@ -453,19 +475,28 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                   );
                 },
                 loading: () => const OrbitStatCard(title: 'Habits', value: '...', icon: Icons.repeat),
-                error: (_, __) => const OrbitStatCard(title: 'Habits', value: 'Err', icon: Icons.repeat),
+                error: (err, _) {
+                  debugPrint('OrbitHome: [ProgressGrid] Habits Error: $err');
+                  return const OrbitStatCard(title: 'Habits', value: 'Err', icon: Icons.repeat);
+                },
               ),
             ),
             const SizedBox(width: OrbitSpacing.md),
             Expanded(
               child: healthSnapshotAsync.when(
-                data: (snapshot) => OrbitStatCard(
-                  title: 'Steps', 
-                  value: '${snapshot.steps}', 
-                  icon: Icons.directions_walk
-                ),
+                data: (snapshot) {
+                  debugPrint('OrbitHome: [ProgressGrid] Displaying real steps: ${snapshot.steps}');
+                  return OrbitStatCard(
+                    title: 'Steps', 
+                    value: '${snapshot.steps}', 
+                    icon: Icons.directions_walk
+                  );
+                },
                 loading: () => const OrbitStatCard(title: 'Steps', value: '...', icon: Icons.directions_walk),
-                error: (_, __) => const OrbitStatCard(title: 'Steps', value: 'Err', icon: Icons.directions_walk),
+                error: (err, _) {
+                  debugPrint('OrbitHome: [ProgressGrid] Steps Error: $err');
+                  return const OrbitStatCard(title: 'Steps', value: 'Err', icon: Icons.directions_walk);
+                },
               ),
             ),
           ],
