@@ -40,6 +40,10 @@ kotlin {
     }
 }
 
+dependencies {
+    implementation("androidx.fragment:fragment-ktx:1.8.1")
+}
+
 flutter {
     source = "../.."
 }

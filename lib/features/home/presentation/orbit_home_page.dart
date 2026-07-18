@@ -48,7 +48,7 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
   }
 
   Future<void> _refreshHealth() async {
-    // Trigger sync
+    debugPrint('OrbitHome: Refreshing health data on resume/init');
     ref.read(healthSyncProvider);
   }
 
@@ -158,10 +158,27 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
             ),
             ElevatedButton(
               onPressed: () async {
-                final success = await ref.read(healthServiceProvider).requestAuthorization();
-                if (success) {
-                  ref.invalidate(healthAuthorizationProvider);
-                  ref.read(healthSyncProvider);
+                debugPrint('OrbitHome: Connect Health button pressed');
+                try {
+                  final success = await ref.read(healthServiceProvider).requestAuthorization();
+                  debugPrint('OrbitHome: Authorization result: $success');
+                  
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Health Connect authorized!')),
+                    );
+                    ref.invalidate(healthAuthorizationProvider);
+                    ref.read(healthSyncProvider);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Health Connect authorization failed or denied.')),
+                    );
+                  }
+                } catch (e) {
+                  debugPrint('OrbitHome: Exception in requestAuthorization: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  );
                 }
               },
               child: const Text("Connect"),
