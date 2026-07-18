@@ -9,7 +9,7 @@ class HealthServiceImpl implements IHealthService {
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
     HealthDataType.DISTANCE_DELTA,
-    HealthDataType.MOVE_MINUTES,
+    HealthDataType.EXERCISE_TIME,
     HealthDataType.SLEEP_SESSION,
     HealthDataType.WORKOUT,
   ];
@@ -41,29 +41,33 @@ class HealthServiceImpl implements IHealthService {
       final stepsCount = await _health.getTotalStepsInInterval(midnight, tomorrow);
       steps = stepsCount ?? 0;
 
-      // Others via getHealthDataFromTypes
-      final data = await _health.getHealthDataFromTypes(midnight, tomorrow, _types);
+      // Others via getHealthDataFromTypes (Named parameters in v11)
+      final data = await _health.getHealthDataFromTypes(
+        startTime: midnight,
+        endTime: tomorrow,
+        types: _types,
+      );
 
       for (var point in data) {
         switch (point.type) {
           case HealthDataType.ACTIVE_ENERGY_BURNED:
-            calories += (double.tryParse(point.value.toString()) ?? 0);
+            calories += (double.tryParse(point.value.toString()) ?? 0.0);
             break;
           case HealthDataType.DISTANCE_DELTA:
-            distance += (double.tryParse(point.value.toString()) ?? 0);
+            distance += (double.tryParse(point.value.toString()) ?? 0.0);
             break;
-          case HealthDataType.MOVE_MINUTES:
+          case HealthDataType.EXERCISE_TIME:
             activeMinutes += (int.tryParse(point.value.toString()) ?? 0);
             break;
           case HealthDataType.SLEEP_SESSION:
             final start = point.dateFrom;
             final end = point.dateTo;
-            sleepMinutes += end.difference(start).inMinutes;
+            sleepMinutes += end.difference(start).inMinutes.toInt();
             break;
           case HealthDataType.WORKOUT:
             final start = point.dateFrom;
             final end = point.dateTo;
-            workoutMinutes += end.difference(start).inMinutes;
+            workoutMinutes += end.difference(start).inMinutes.toInt();
             break;
           default:
             break;

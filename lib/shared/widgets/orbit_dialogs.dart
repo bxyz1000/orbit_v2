@@ -5,7 +5,7 @@ import '../../features/habits/domain/habit.dart';
 import '../../features/habits/data/habit_repository.dart';
 import '../../features/planner/domain/planner_event.dart';
 import '../../features/planner/data/planner_repository.dart';
-import '../core/theme/orbit_spacing.dart';
+import '../../core/theme/orbit_spacing.dart';
 
 class OrbitDialogs {
   static void showAddTask(BuildContext context, TaskRepository repo, {VoidCallback? onDone}) {
