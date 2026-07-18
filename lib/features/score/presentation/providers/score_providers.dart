@@ -5,9 +5,11 @@ import '../../domain/services/motivation_service.dart';
 import '../../data/score_service_impl.dart';
 import '../../data/motivation_service_impl.dart';
 import '../../../../shared/providers/repository_providers.dart';
-import '../../domain/entities/daily_score.dart';
-import '../../domain/entities/personal_record.dart';
-import '../../domain/entities/achievement.dart';
+import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/weekly_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/monthly_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/personal_record.dart';
+import 'package:orbit_v2/features/score/domain/entities/achievement.dart';
 
 /// Provider for the [ScoreService].
 final scoreServiceProvider = Provider<ScoreService>((ref) {

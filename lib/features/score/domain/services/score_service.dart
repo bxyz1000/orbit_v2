@@ -1,5 +1,7 @@
-import '../entities/daily_score.dart';
-import '../entities/personal_record.dart';
+import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/weekly_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/monthly_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/personal_record.dart';
 
 /// Business logic interface for the Orbit Score Engine.
 /// Implements Score Engine v1.1.
