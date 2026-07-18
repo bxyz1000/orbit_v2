@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_spacing.dart';
@@ -328,7 +329,7 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                 subtitle: "Mission: Complete this task",
                 trailing: const Icon(Icons.chevron_right, size: 16),
               ),
-              if (tasks.indexOf(task) < min(tasks.length, 3) - 1) const Divider(height: 1),
+              if (tasks.indexOf(task) < math.min(tasks.length, 3) - 1) const Divider(height: 1),
             ],
           )).toList(),
         );
@@ -360,12 +361,12 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(upcoming.time, style: Theme.of(context).textTheme.labelSmall),
+                        Text(upcoming.startTime, style: Theme.of(context).textTheme.labelSmall),
                         Text(upcoming.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const Spacer(),
-                    _CountdownWidget(startTime: upcoming.time),
+                    _CountdownWidget(startTime: upcoming.startTime),
                   ],
                 ),
               ],
