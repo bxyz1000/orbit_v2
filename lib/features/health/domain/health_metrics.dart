@@ -10,12 +10,16 @@ class StepLog {
   late DateTime date;
 
   late int count;
+  late double calories;
+  late double distance;
 
   StepLog();
 
   StepLog.create({
     required this.date,
     required this.count,
+    this.calories = 0,
+    this.distance = 0,
   });
 }
 

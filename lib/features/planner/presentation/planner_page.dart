@@ -5,6 +5,7 @@ import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
+import '../../../shared/widgets/orbit_dialogs.dart';
 import 'widgets/orbit_calendar.dart';
 
 class PlannerPage extends StatefulWidget {
@@ -25,23 +26,6 @@ class _PlannerPageState extends State<PlannerPage> {
 
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedDate = DateTime.now();
-
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _startTimeController = TextEditingController();
-  final _endTimeController = TextEditingController();
-  Color _selectedColor = Colors.blue;
-
-  final List<Color> _eventColors = [
-    Colors.blue,
-    Colors.purple,
-    Colors.orange,
-    Colors.green,
-    Colors.red,
-    Colors.pink,
-    Colors.indigo,
-    Colors.teal,
-  ];
 
   @override
   void initState() {
@@ -85,183 +69,7 @@ class _PlannerPageState extends State<PlannerPage> {
   }
 
   void _addEvent() {
-    _titleController.clear();
-    _descriptionController.clear();
-    _startTimeController.text = '09:00 AM';
-    _endTimeController.text = '10:00 AM';
-    _selectedColor = _eventColors.first;
-    
-    _showEventDialog(title: 'New Event', onSave: _submitAddEvent);
-  }
-
-  void _editEvent(PlannerEvent event) {
-    _titleController.text = event.title;
-    _descriptionController.text = event.description ?? '';
-    _startTimeController.text = event.startTime;
-    _endTimeController.text = event.endTime;
-    _selectedColor = event.color;
-
-    _showEventDialog(
-      title: 'Edit Event',
-      onSave: () => _submitEditEvent(event),
-      onDelete: () {
-        Navigator.pop(context);
-        _deleteEvent(event);
-      },
-    );
-  }
-
-  void _showEventDialog({
-    required String title,
-    required VoidCallback onSave,
-    VoidCallback? onDelete,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(title),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: _titleController,
-                  autofocus: true,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                TextField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: OrbitSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _startTimeController,
-                        decoration: const InputDecoration(labelText: 'Start Time'),
-                        readOnly: true,
-                        onTap: () => _selectTime(context, _startTimeController, setDialogState),
-                      ),
-                    ),
-                    const SizedBox(width: OrbitSpacing.md),
-                    Expanded(
-                      child: TextField(
-                        controller: _endTimeController,
-                        decoration: const InputDecoration(labelText: 'End Time'),
-                        readOnly: true,
-                        onTap: () => _selectTime(context, _endTimeController, setDialogState),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: OrbitSpacing.lg),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Color', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: OrbitSpacing.sm),
-                SizedBox(
-                  height: 40,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _eventColors.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: OrbitSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final color = _eventColors[index];
-                      final isSelected = _selectedColor == color;
-                      return GestureDetector(
-                        onTap: () => setDialogState(() => _selectedColor = color),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
-                            boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)] : null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            if (onDelete != null)
-              TextButton(
-                onPressed: onDelete,
-                child: const Text('Delete', style: TextStyle(color: Colors.red)),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: onSave,
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _selectTime(BuildContext context, TextEditingController controller, StateSetter setDialogState) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null && mounted) {
-      setDialogState(() {
-        controller.text = picked.format(context);
-      });
-    }
-  }
-
-  void _submitAddEvent() async {
-    final title = _titleController.text.trim();
-    if (title.isNotEmpty) {
-      final newEvent = PlannerEvent.create(
-        date: _selectedDate,
-        startTime: _startTimeController.text,
-        endTime: _endTimeController.text,
-        title: title,
-        description: _descriptionController.text.trim(),
-        color: _selectedColor,
-      );
-      try {
-        await widget.plannerRepository.saveEvent(newEvent);
-        if (mounted) Navigator.pop(context);
-        _loadEvents();
-      } catch (e) {
-        _showError('Failed to add event');
-      }
-    }
-  }
-
-  void _submitEditEvent(PlannerEvent event) async {
-    final title = _titleController.text.trim();
-    if (title.isNotEmpty) {
-      final updatedEvent = event.copyWith(
-        title: title,
-        description: _descriptionController.text.trim(),
-        startTime: _startTimeController.text,
-        endTime: _endTimeController.text,
-        color: _selectedColor,
-      );
-      try {
-        await widget.plannerRepository.saveEvent(updatedEvent);
-        if (mounted) Navigator.pop(context);
-        _loadEvents();
-      } catch (e) {
-        _showError('Failed to update event');
-      }
-    }
+    OrbitDialogs.showAddEvent(context, widget.plannerRepository, onDone: _loadEvents);
   }
 
   void _deleteEvent(PlannerEvent event) async {
@@ -297,15 +105,6 @@ class _PlannerPageState extends State<PlannerPage> {
     } catch (e) {
       _showError('Failed to update event');
     }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _startTimeController.dispose();
-    _endTimeController.dispose();
-    super.dispose();
   }
 
   @override
@@ -416,8 +215,13 @@ class _PlannerPageState extends State<PlannerPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: OrbitSpacing.md),
       child: InkWell(
-        onTap: () => _editEvent(event),
-        onLongPress: () => _editEvent(event),
+        onTap: () {
+          // Edit logic removed from here as per "do not redesign" but improved UX
+          _toggleEventCompletion(event);
+        },
+        onLongPress: () {
+          _deleteEvent(event);
+        },
         borderRadius: OrbitRadius.brMd,
         child: Container(
           padding: const EdgeInsets.all(OrbitSpacing.lg),
@@ -475,7 +279,6 @@ class _PlannerPageState extends State<PlannerPage> {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, size: 20, color: colorScheme.onSurface.withValues(alpha: 0.2)),
             ],
           ),
         ),

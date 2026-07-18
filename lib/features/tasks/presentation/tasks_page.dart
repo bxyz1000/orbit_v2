@@ -7,6 +7,7 @@ import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_search_bar.dart';
+import '../../../shared/widgets/orbit_dialogs.dart';
 
 enum TaskFilter { all, active, completed }
 
@@ -26,7 +27,6 @@ class _TasksPageState extends State<TasksPage> {
   List<Task> _tasks = [];
   bool _isLoading = true;
 
-  final TextEditingController _taskController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   
   String _searchQuery = "";
@@ -64,54 +64,8 @@ class _TasksPageState extends State<TasksPage> {
     }
   }
 
-  void _showTaskDialog([Task? task]) {
-    final isEditing = task != null;
-    _taskController.text = task?.title ?? '';
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'Edit Task' : 'Add Task'),
-        content: TextField(
-          controller: _taskController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Task title',
-          ),
-          onSubmitted: (_) => _submitTask(task),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _taskController.clear();
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => _submitTask(task),
-            child: Text(isEditing ? 'Save' : 'Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _submitTask([Task? existingTask]) async {
-    final title = _taskController.text.trim();
-    if (title.isNotEmpty) {
-      final task = existingTask != null 
-          ? existingTask.copyWith(title: title)
-          : Task.create(title: title);
-      try {
-        await widget.taskRepository.saveTask(task);
-        _taskController.clear();
-        if (mounted) Navigator.pop(context);
-        _loadTasks();
-      } catch (e) {
-        _showError('Failed to save task');
-      }
-    }
+  void _addTask() {
+    OrbitDialogs.showAddTask(context, widget.taskRepository, onDone: _loadTasks);
   }
 
   void _toggleTask(Task task) async {
@@ -156,7 +110,6 @@ class _TasksPageState extends State<TasksPage> {
 
   @override
   void dispose() {
-    _taskController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -212,7 +165,7 @@ class _TasksPageState extends State<TasksPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showTaskDialog(),
+        onPressed: _addTask,
         tooltip: 'Add Task',
         child: const Icon(Icons.add),
       ),
@@ -330,31 +283,27 @@ class _TasksPageState extends State<TasksPage> {
           ),
           child: Icon(Icons.delete_outline, color: colorScheme.error),
         ),
-        child: InkWell(
-          onLongPress: () => _showTaskDialog(task),
-          borderRadius: OrbitRadius.brMd,
-          child: OrbitGroupCard(
-            children: [
-              OrbitInfoTile(
-                title: task.title,
-                titleStyle: theme.textTheme.bodyLarge?.copyWith(
-                  decoration: task.completed ? TextDecoration.lineThrough : null,
-                  color: task.completed ? colorScheme.onSurface.withValues(alpha: 0.5) : null,
-                ),
-                leading: Checkbox(
-                  value: task.completed,
-                  onChanged: (_) => _toggleTask(task),
-                  shape: RoundedRectangleBorder(borderRadius: OrbitRadius.brXs),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20),
-                  color: colorScheme.onSurface.withValues(alpha: 0.3),
-                  onPressed: () => _deleteTask(task),
-                  tooltip: 'Delete Task',
-                ),
+        child: OrbitGroupCard(
+          children: [
+            OrbitInfoTile(
+              title: task.title,
+              titleStyle: theme.textTheme.bodyLarge?.copyWith(
+                decoration: task.completed ? TextDecoration.lineThrough : null,
+                color: task.completed ? colorScheme.onSurface.withValues(alpha: 0.5) : null,
               ),
-            ],
-          ),
+              leading: Checkbox(
+                value: task.completed,
+                onChanged: (_) => _toggleTask(task),
+                shape: RoundedRectangleBorder(borderRadius: OrbitRadius.brXs),
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
+                onPressed: () => _deleteTask(task),
+                tooltip: 'Delete Task',
+              ),
+            ),
+          ],
         ),
       ),
     );

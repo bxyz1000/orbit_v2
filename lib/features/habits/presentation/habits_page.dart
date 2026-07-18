@@ -6,6 +6,7 @@ import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
+import '../../../shared/widgets/orbit_dialogs.dart';
 
 import '../domain/habit_completion.dart';
 
@@ -71,7 +72,6 @@ class _HabitsPageState extends State<HabitsPage> {
       );
     } else {
       currentStreak = (currentStreak > 0) ? currentStreak - 1 : 0;
-      // Note: In a full implementation, we would delete the completion record here
     }
 
     final updatedHabit = habit.copyWith(
@@ -114,88 +114,8 @@ class _HabitsPageState extends State<HabitsPage> {
     }
   }
 
-  void _showHabitDialog([Habit? habit]) {
-    final isEditing = habit != null;
-    final titleController = TextEditingController(text: habit?.title);
-    IconData selectedIcon = habit?.icon ?? Icons.star;
-    Color selectedColor = habit?.color ?? Colors.blue;
-
-    final icons = [
-      Icons.star, Icons.favorite, Icons.fitness_center, Icons.book, 
-      Icons.water_drop, Icons.wb_sunny, Icons.nightlight, Icons.self_improvement,
-      Icons.brush, Icons.code, Icons.music_note, Icons.restaurant
-    ];
-    final colors = [
-      Colors.blue, Colors.red, Colors.green, Colors.orange, 
-      Colors.purple, Colors.teal, Colors.pink, Colors.amber
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Edit Habit' : 'New Habit'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  autofocus: !isEditing,
-                  decoration: const InputDecoration(hintText: 'Habit Title'),
-                ),
-                const SizedBox(height: OrbitSpacing.lg),
-                const Align(alignment: Alignment.centerLeft, child: Text('Choose icon')),
-                const SizedBox(height: OrbitSpacing.sm),
-                Wrap(
-                  spacing: OrbitSpacing.xs,
-                  children: icons.map((icon) => IconButton(
-                    icon: Icon(icon, color: selectedIcon == icon ? selectedColor : null),
-                    onPressed: () => setDialogState(() => selectedIcon = icon),
-                  )).toList(),
-                ),
-                const SizedBox(height: OrbitSpacing.md),
-                const Align(alignment: Alignment.centerLeft, child: Text('Choose color')),
-                const SizedBox(height: OrbitSpacing.sm),
-                Wrap(
-                  spacing: OrbitSpacing.sm,
-                  runSpacing: OrbitSpacing.sm,
-                  children: colors.map((color) => InkWell(
-                    onTap: () => setDialogState(() => selectedColor = color),
-                    child: Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: selectedColor == color ? Border.all(color: Colors.white, width: 2) : null,
-                        boxShadow: selectedColor == color ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 4)] : null,
-                      ),
-                    ),
-                  )).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                if (titleController.text.isNotEmpty) {
-                  final newHabit = isEditing
-                    ? habit.copyWith(title: titleController.text, icon: selectedIcon, color: selectedColor)
-                    : Habit.create(title: titleController.text, icon: selectedIcon, color: selectedColor);
-                  await widget.habitRepository.saveHabit(newHabit);
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  _loadHabits();
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _addHabit() {
+    OrbitDialogs.showAddHabit(context, widget.habitRepository, onDone: _loadHabits);
   }
 
   @override
@@ -218,7 +138,7 @@ class _HabitsPageState extends State<HabitsPage> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showHabitDialog(),
+        onPressed: _addHabit,
         tooltip: 'Create new habit',
         child: const Icon(Icons.add),
       ),
@@ -243,7 +163,6 @@ class _HabitsPageState extends State<HabitsPage> {
         ),
         child: InkWell(
           onTap: () => _toggleHabit(habit),
-          onLongPress: () => _showHabitDialog(habit),
           borderRadius: OrbitRadius.brMd,
           child: OrbitGroupCard(
             children: [

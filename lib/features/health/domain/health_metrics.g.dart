@@ -17,8 +17,18 @@ const StepLogSchema = CollectionSchema(
   name: r'StepLog',
   id: -5330884255282615247,
   properties: {
-    r'count': PropertySchema(id: 0, name: r'count', type: IsarType.long),
-    r'date': PropertySchema(id: 1, name: r'date', type: IsarType.dateTime),
+    r'calories': PropertySchema(
+      id: 0,
+      name: r'calories',
+      type: IsarType.double,
+    ),
+    r'count': PropertySchema(id: 1, name: r'count', type: IsarType.long),
+    r'date': PropertySchema(id: 2, name: r'date', type: IsarType.dateTime),
+    r'distance': PropertySchema(
+      id: 3,
+      name: r'distance',
+      type: IsarType.double,
+    ),
   },
 
   estimateSize: _stepLogEstimateSize,
@@ -65,8 +75,10 @@ void _stepLogSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeLong(offsets[0], object.count);
-  writer.writeDateTime(offsets[1], object.date);
+  writer.writeDouble(offsets[0], object.calories);
+  writer.writeLong(offsets[1], object.count);
+  writer.writeDateTime(offsets[2], object.date);
+  writer.writeDouble(offsets[3], object.distance);
 }
 
 StepLog _stepLogDeserialize(
@@ -76,8 +88,10 @@ StepLog _stepLogDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = StepLog();
-  object.count = reader.readLong(offsets[0]);
-  object.date = reader.readDateTime(offsets[1]);
+  object.calories = reader.readDouble(offsets[0]);
+  object.count = reader.readLong(offsets[1]);
+  object.date = reader.readDateTime(offsets[2]);
+  object.distance = reader.readDouble(offsets[3]);
   object.id = id;
   return object;
 }
@@ -90,9 +104,13 @@ P _stepLogDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 1:
+      return (reader.readLong(offset)) as P;
+    case 2:
       return (reader.readDateTime(offset)) as P;
+    case 3:
+      return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -355,6 +373,80 @@ extension StepLogQueryWhere on QueryBuilder<StepLog, StepLog, QWhereClause> {
 
 extension StepLogQueryFilter
     on QueryBuilder<StepLog, StepLog, QFilterCondition> {
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> caloriesEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'calories',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> caloriesGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'calories',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> caloriesLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'calories',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> caloriesBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'calories',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterFilterCondition> countEqualTo(
     int value,
   ) {
@@ -473,6 +565,80 @@ extension StepLogQueryFilter
     });
   }
 
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> distanceEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'distance',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> distanceGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'distance',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> distanceLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'distance',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> distanceBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'distance',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -538,6 +704,18 @@ extension StepLogQueryLinks
     on QueryBuilder<StepLog, StepLog, QFilterCondition> {}
 
 extension StepLogQuerySortBy on QueryBuilder<StepLog, StepLog, QSortBy> {
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByCalories() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'calories', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByCaloriesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'calories', Sort.desc);
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByCount() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'count', Sort.asc);
@@ -561,10 +739,34 @@ extension StepLogQuerySortBy on QueryBuilder<StepLog, StepLog, QSortBy> {
       return query.addSortBy(r'date', Sort.desc);
     });
   }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByDistance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByDistanceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.desc);
+    });
+  }
 }
 
 extension StepLogQuerySortThenBy
     on QueryBuilder<StepLog, StepLog, QSortThenBy> {
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByCalories() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'calories', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByCaloriesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'calories', Sort.desc);
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByCount() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'count', Sort.asc);
@@ -589,6 +791,18 @@ extension StepLogQuerySortThenBy
     });
   }
 
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByDistance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByDistanceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'distance', Sort.desc);
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -604,6 +818,12 @@ extension StepLogQuerySortThenBy
 
 extension StepLogQueryWhereDistinct
     on QueryBuilder<StepLog, StepLog, QDistinct> {
+  QueryBuilder<StepLog, StepLog, QDistinct> distinctByCalories() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'calories');
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QDistinct> distinctByCount() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'count');
@@ -613,6 +833,12 @@ extension StepLogQueryWhereDistinct
   QueryBuilder<StepLog, StepLog, QDistinct> distinctByDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'date');
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QDistinct> distinctByDistance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'distance');
     });
   }
 }
@@ -625,6 +851,12 @@ extension StepLogQueryProperty
     });
   }
 
+  QueryBuilder<StepLog, double, QQueryOperations> caloriesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'calories');
+    });
+  }
+
   QueryBuilder<StepLog, int, QQueryOperations> countProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'count');
@@ -634,6 +866,12 @@ extension StepLogQueryProperty
   QueryBuilder<StepLog, DateTime, QQueryOperations> dateProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'date');
+    });
+  }
+
+  QueryBuilder<StepLog, double, QQueryOperations> distanceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'distance');
     });
   }
 }

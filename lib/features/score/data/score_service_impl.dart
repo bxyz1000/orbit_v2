@@ -14,6 +14,8 @@ import 'package:orbit_v2/features/score/domain/entities/personal_record.dart';
 import 'package:orbit_v2/features/score/domain/services/score_service.dart';
 import 'repositories/score_repository.dart';
 import 'repositories/personal_record_repository.dart';
+import 'package:orbit_v2/features/health/domain/calculators/health_score_calculator.dart';
+import 'package:orbit_v2/features/health/domain/entities/health_snapshot.dart';
 
 class ScoreServiceImpl implements ScoreService {
   final ScoreRepository _scoreRepository;
@@ -161,26 +163,21 @@ class ScoreServiceImpl implements ScoreService {
   Future<void> finalizeDay(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
     
-    // We re-calculate one last time to get the absolute latest state
-    // But we avoid the check to prevent loop
     final score = (await _calculateRawScore(startOfDay)).copyWith(
       isFinalized: true,
       updatedAt: DateTime.now(),
     );
     await _scoreRepository.saveDailyScore(score);
 
-    // Update PRs
     await _recordRepository.updateIfHigher('highest_daily_score', score.totalScore.toDouble(), score.date);
     
     final streak = await _calculateStreak(score.date);
     await _recordRepository.updateIfHigher('longest_streak', streak.toDouble(), score.date);
     
-    // Trigger aggregate updates
     await calculateWeeklyScore(date);
     await calculateMonthlyScore(date);
   }
 
-  /// Calculates score without finalization checks to avoid recursion.
   Future<DailyScore> _calculateRawScore(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
     
@@ -207,32 +204,27 @@ class ScoreServiceImpl implements ScoreService {
     final focusScore = focusPoints.round();
 
     // 4. Health Score
-    final steps = await _healthRepository.getStepsForDate(startOfDay);
-    int stepsPoints = 0;
-    if (steps != null) {
-      const stepGoal = 10000;
-      if (steps.count >= stepGoal) {
-        stepsPoints += 50;
-        final bonusSteps = max(0, steps.count - stepGoal);
-        stepsPoints += min(20, (bonusSteps ~/ 1000) * 2);
-      }
-    }
+    final stepLog = await _healthRepository.getStepsForDate(startOfDay);
+    final sleepLog = await _healthRepository.getSleepForDate(startOfDay);
+    final workoutLogs = await _healthRepository.getWorkoutsForDate(startOfDay);
+    final workoutMinutes = workoutLogs.fold<int>(0, (sum, w) => sum + w.durationMinutes);
 
-    final workouts = await _healthRepository.getWorkoutsForDate(startOfDay);
-    final workoutMins = workouts.fold<int>(0, (sum, w) => sum + w.durationMinutes);
-    int workoutPoints = 0;
-    if (workoutMins >= 10) {
-      workoutPoints = (workoutMins * 1.5).round();
-    }
+    final healthSnapshot = HealthSnapshot(
+      steps: stepLog?.count ?? 0,
+      calories: stepLog?.calories ?? 0,
+      distance: stepLog?.distance ?? 0,
+      activeMinutes: 0, 
+      sleepMinutes: sleepLog?.durationMinutes ?? 0,
+      workoutMinutes: workoutMinutes,
+      timestamp: DateTime.now(),
+    );
 
-    final sleep = await _healthRepository.getSleepForDate(startOfDay);
-    int sleepPoints = 0;
-    if (sleep != null) {
-      const sleepGoalMins = 8 * 60;
-      if ((sleep.durationMinutes - sleepGoalMins).abs() <= 60) {
-        sleepPoints = 40;
-      }
-    }
+    final stepsPoints = (healthSnapshot.steps >= 10000) ? 15 : (healthSnapshot.steps >= 5000 ? 8 : 0);
+    final workoutPoints = (healthSnapshot.workoutMinutes >= 30) ? 20 : (healthSnapshot.workoutMinutes >= 15 ? 10 : 0);
+    const sleepGoalMins = 8 * 60;
+    final sleepDiff = (healthSnapshot.sleepMinutes - sleepGoalMins).abs();
+    final sleepPoints = healthSnapshot.sleepMinutes > 0 ? (sleepDiff <= 60 ? 15 : (sleepDiff <= 120 ? 8 : 0)) : 0;
+    
     final healthScore = stepsPoints + workoutPoints + sleepPoints;
 
     // 5. Planner Score
@@ -249,32 +241,26 @@ class ScoreServiceImpl implements ScoreService {
     final overdueTasks = tasks.where((t) => !t.completed && t.dueDate != null && t.dueDate!.isBefore(startOfDay)).length;
     final penaltyScore = min(20, overdueTasks * 2);
 
-    // 8. Consistency Multiplier (Streak)
+    // 8. Consistency Multiplier
     final streak = await _calculateStreak(startOfDay);
     double multiplier = 1.0;
-    if (streak >= 100) {
-      multiplier = 1.5;
-    } else if (streak >= 30) {
-      multiplier = 1.2;
-    } else if (streak >= 7) {
-      multiplier = 1.1;
-    }
+    if (streak >= 100) multiplier = 1.5;
+    else if (streak >= 30) multiplier = 1.2;
+    else if (streak >= 7) multiplier = 1.1;
 
     // 9. Bonuses
     int bonusScore = 0;
     final yesterdayScore = await _scoreRepository.getDailyScore(startOfDay.subtract(const Duration(days: 1)));
     if (yesterdayScore != null && yesterdayScore.isFinalized) {
       int currentSubtotal = taskScore + habitScore + focusScore + healthScore + plannerScore + goalScore - penaltyScore;
-      if (currentSubtotal > yesterdayScore.totalScore) {
-        bonusScore += 25;
-      }
+      if (currentSubtotal > yesterdayScore.totalScore) bonusScore += 25;
     }
 
     if (streak == 7) bonusScore += 100;
     if (streak == 30) bonusScore += 500;
     if (streak == 100) bonusScore += 2000;
 
-    bool isBalanced = completedTasks >= 3 && completions.isNotEmpty && focusMinutes >= 25 && stepsPoints >= 50;
+    bool isBalanced = completedTasks >= 3 && completions.isNotEmpty && focusMinutes >= 25 && stepsPoints >= 8;
     if (isBalanced) bonusScore += 75;
 
     int totalScore = (((taskScore + habitScore + focusScore + healthScore + plannerScore + goalScore + bonusScore - penaltyScore) * multiplier)).round();
@@ -298,9 +284,7 @@ class ScoreServiceImpl implements ScoreService {
   }
 
   @override
-  Future<void> recalculateHistoricalScores() async {
-    // Logic to iterate through history and re-run calculateActiveScore
-  }
+  Future<void> recalculateHistoricalScores() async {}
 
   @override
   Future<List<PersonalRecord>> getRecords() async {
@@ -326,15 +310,11 @@ class ScoreServiceImpl implements ScoreService {
         missedDays++;
       }
       current = current.subtract(const Duration(days: 1));
-      // Safety break
       if (streak > 5000) break;
     }
     
-    // If today is active, it counts
     final todayScore = await _scoreRepository.getDailyScore(today);
-    if (todayScore != null && todayScore.totalScore >= 50) {
-      streak++;
-    }
+    if (todayScore != null && todayScore.totalScore >= 50) streak++;
     
     return streak;
   }

@@ -4,9 +4,10 @@ import '../features/home/presentation/orbit_home_page.dart';
 import '../features/tasks/presentation/tasks_page.dart';
 import '../features/analytics/presentation/insights_page.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/focus/presentation/focus_page.dart';
 import '../shared/providers/repository_providers.dart';
+import '../shared/widgets/orbit_dialogs.dart';
 import '../core/theme/orbit_spacing.dart';
-import '../core/theme/orbit_radius.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -51,13 +52,18 @@ class _AppShellState extends ConsumerState<AppShell> with SingleTickerProviderSt
     });
   }
 
+  void _onProfileTap() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const ProfilePage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      const OrbitHomePage(),
+      OrbitHomePage(onProfileTap: _onProfileTap),
       TasksPage(taskRepository: ref.read(taskRepositoryProvider)),
       const InsightsPage(),
-      const ProfilePage(),
     ];
 
     return Scaffold(
@@ -78,6 +84,8 @@ class _AppShellState extends ConsumerState<AppShell> with SingleTickerProviderSt
         ],
       ),
       bottomNavigationBar: BottomAppBar(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: 65,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
         child: Row(
@@ -87,6 +95,7 @@ class _AppShellState extends ConsumerState<AppShell> with SingleTickerProviderSt
             _buildNavAction(1, Icons.check_circle_outline, Icons.check_circle, 'Tasks'),
             const SizedBox(width: 48), // Space for FAB
             _buildNavAction(2, Icons.analytics_outlined, Icons.analytics, 'Insights'),
+            // Profile moved to AppBar as per request
             _buildNavAction(3, Icons.person_outline, Icons.person, 'Profile'),
           ],
         ),
@@ -105,6 +114,26 @@ class _AppShellState extends ConsumerState<AppShell> with SingleTickerProviderSt
   }
 
   Widget _buildNavAction(int index, IconData icon, IconData selectedIcon, String label) {
+    // If it's profile, we use it as a button that pushes a route instead of switching tab?
+    // User said "Settings and Profile move to AppBar/avatar menu." 
+    // But then bottom nav only has Orbit, Tasks, Insights. 
+    // To keep it balanced, I'll put Orbit, Tasks on left and Insights, [Profile?] on right?
+    // Actually, I'll just use 3 buttons and the FAB.
+    
+    if (index == 3) {
+      // Profile button in bottom nav for legacy/balance, but pushes a route
+      return InkWell(
+        onTap: _onProfileTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_outline, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            const Text('Profile', style: TextStyle(fontSize: 10)),
+          ],
+        ),
+      );
+    }
+
     final isSelected = _selectedIndex == index;
     final color = isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
 
@@ -145,13 +174,23 @@ class _AppShellState extends ConsumerState<AppShell> with SingleTickerProviderSt
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildFabOption(Icons.add_task, 'Task', Colors.blue, () {}),
+            _buildFabOption(Icons.add_task, 'Task', Colors.blue, () {
+              OrbitDialogs.showAddTask(context, ref.read(taskRepositoryProvider));
+            }),
             OrbitSpacing.gapMd,
-            _buildFabOption(Icons.repeat, 'Habit', Colors.green, () {}),
+            _buildFabOption(Icons.repeat, 'Habit', Colors.green, () {
+              OrbitDialogs.showAddHabit(context, ref.read(habitRepositoryProvider));
+            }),
             OrbitSpacing.gapMd,
-            _buildFabOption(Icons.calendar_today, 'Event', Colors.purple, () {}),
+            _buildFabOption(Icons.calendar_today, 'Event', Colors.purple, () {
+              OrbitDialogs.showAddEvent(context, ref.read(plannerRepositoryProvider));
+            }),
             OrbitSpacing.gapMd,
-            _buildFabOption(Icons.timer, 'Focus', Colors.orange, () {}),
+            _buildFabOption(Icons.timer, 'Focus', Colors.orange, () {
+               Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => FocusPage(focusRepository: ref.read(focusRepositoryProvider))),
+              );
+            }),
           ],
         ),
       ),

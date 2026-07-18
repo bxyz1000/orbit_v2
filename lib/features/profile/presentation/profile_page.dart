@@ -14,7 +14,16 @@ class ProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the future provider for the initial load
     final prefsAsync = ref.watch(userPreferencesProvider);
+    
+    // Also watch the stream provider for real-time updates if they happen
+    ref.listen(userPreferencesStreamProvider, (previous, next) {
+      if (next is AsyncData) {
+        ref.invalidate(userPreferencesProvider);
+      }
+    });
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
@@ -43,8 +52,26 @@ class ProfilePage extends ConsumerWidget {
             ],
           ),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error loading profile: $e')),
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(48.0),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              OrbitSpacing.gapMd,
+              Text('Error loading profile: $e'),
+              TextButton(
+                onPressed: () => ref.invalidate(userPreferencesProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -207,19 +234,19 @@ class ProfilePage extends ConsumerWidget {
         OrbitSpacing.gapMd,
         OrbitGroupCard(
           children: [
-            OrbitInfoTile(
+            const OrbitInfoTile(
               title: 'Version',
               trailing: Text(
                 '0.1.0 MVP',
-                style: const TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey),
               ),
             ),
             const Divider(height: 1),
-            OrbitInfoTile(
+            const OrbitInfoTile(
               title: 'Developer',
               trailing: Text(
                 'Bhavik',
-                style: const TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey),
               ),
             ),
           ],
