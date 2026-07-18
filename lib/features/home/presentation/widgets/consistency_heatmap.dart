@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../score/score.dart';
+import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
+import 'package:orbit_v2/features/score/presentation/providers/score_providers.dart';
 import '../../../../core/theme/orbit_radius.dart';
 
 class ConsistencyHeatmap extends ConsumerWidget {

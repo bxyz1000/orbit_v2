@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../score/domain/entities/daily_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
 import '../../../../core/theme/orbit_spacing.dart';
 
 class ScoreBreakdownBars extends StatelessWidget {

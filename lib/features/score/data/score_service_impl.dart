@@ -7,9 +7,11 @@ import '../../focus/data/focus_repository.dart';
 import '../../planner/data/planner_repository.dart';
 import '../../health/data/health_repository.dart';
 import '../../goals/data/goal_repository.dart';
-import '../domain/entities/daily_score.dart';
-import '../domain/entities/personal_record.dart';
-import '../domain/services/score_service.dart';
+import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/weekly_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/monthly_score.dart';
+import 'package:orbit_v2/features/score/domain/entities/personal_record.dart';
+import 'package:orbit_v2/features/score/domain/services/score_service.dart';
 import 'repositories/score_repository.dart';
 import 'repositories/personal_record_repository.dart';
 
