@@ -17,15 +17,20 @@ const StepLogSchema = CollectionSchema(
   name: r'StepLog',
   id: -5330884255282615247,
   properties: {
-    r'calories': PropertySchema(
+    r'activeMinutes': PropertySchema(
       id: 0,
+      name: r'activeMinutes',
+      type: IsarType.long,
+    ),
+    r'calories': PropertySchema(
+      id: 1,
       name: r'calories',
       type: IsarType.double,
     ),
-    r'count': PropertySchema(id: 1, name: r'count', type: IsarType.long),
-    r'date': PropertySchema(id: 2, name: r'date', type: IsarType.dateTime),
+    r'count': PropertySchema(id: 2, name: r'count', type: IsarType.long),
+    r'date': PropertySchema(id: 3, name: r'date', type: IsarType.dateTime),
     r'distance': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'distance',
       type: IsarType.double,
     ),
@@ -75,10 +80,11 @@ void _stepLogSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDouble(offsets[0], object.calories);
-  writer.writeLong(offsets[1], object.count);
-  writer.writeDateTime(offsets[2], object.date);
-  writer.writeDouble(offsets[3], object.distance);
+  writer.writeLong(offsets[0], object.activeMinutes);
+  writer.writeDouble(offsets[1], object.calories);
+  writer.writeLong(offsets[2], object.count);
+  writer.writeDateTime(offsets[3], object.date);
+  writer.writeDouble(offsets[4], object.distance);
 }
 
 StepLog _stepLogDeserialize(
@@ -88,10 +94,11 @@ StepLog _stepLogDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = StepLog();
-  object.calories = reader.readDouble(offsets[0]);
-  object.count = reader.readLong(offsets[1]);
-  object.date = reader.readDateTime(offsets[2]);
-  object.distance = reader.readDouble(offsets[3]);
+  object.activeMinutes = reader.readLong(offsets[0]);
+  object.calories = reader.readDouble(offsets[1]);
+  object.count = reader.readLong(offsets[2]);
+  object.date = reader.readDateTime(offsets[3]);
+  object.distance = reader.readDouble(offsets[4]);
   object.id = id;
   return object;
 }
@@ -104,12 +111,14 @@ P _stepLogDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDouble(offset)) as P;
-    case 1:
       return (reader.readLong(offset)) as P;
+    case 1:
+      return (reader.readDouble(offset)) as P;
     case 2:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
+      return (reader.readDateTime(offset)) as P;
+    case 4:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -373,6 +382,63 @@ extension StepLogQueryWhere on QueryBuilder<StepLog, StepLog, QWhereClause> {
 
 extension StepLogQueryFilter
     on QueryBuilder<StepLog, StepLog, QFilterCondition> {
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> activeMinutesEqualTo(
+    int value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'activeMinutes', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition>
+  activeMinutesGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'activeMinutes',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> activeMinutesLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'activeMinutes',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterFilterCondition> activeMinutesBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'activeMinutes',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterFilterCondition> caloriesEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -704,6 +770,18 @@ extension StepLogQueryLinks
     on QueryBuilder<StepLog, StepLog, QFilterCondition> {}
 
 extension StepLogQuerySortBy on QueryBuilder<StepLog, StepLog, QSortBy> {
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByActiveMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activeMinutes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByActiveMinutesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activeMinutes', Sort.desc);
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterSortBy> sortByCalories() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'calories', Sort.asc);
@@ -755,6 +833,18 @@ extension StepLogQuerySortBy on QueryBuilder<StepLog, StepLog, QSortBy> {
 
 extension StepLogQuerySortThenBy
     on QueryBuilder<StepLog, StepLog, QSortThenBy> {
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByActiveMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activeMinutes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByActiveMinutesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activeMinutes', Sort.desc);
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QAfterSortBy> thenByCalories() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'calories', Sort.asc);
@@ -818,6 +908,12 @@ extension StepLogQuerySortThenBy
 
 extension StepLogQueryWhereDistinct
     on QueryBuilder<StepLog, StepLog, QDistinct> {
+  QueryBuilder<StepLog, StepLog, QDistinct> distinctByActiveMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'activeMinutes');
+    });
+  }
+
   QueryBuilder<StepLog, StepLog, QDistinct> distinctByCalories() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'calories');
@@ -848,6 +944,12 @@ extension StepLogQueryProperty
   QueryBuilder<StepLog, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<StepLog, int, QQueryOperations> activeMinutesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activeMinutes');
     });
   }
 

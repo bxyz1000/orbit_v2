@@ -6,6 +6,9 @@ import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import 'providers/preferences_providers.dart';
+import '../../integrations/presentation/providers/integration_providers.dart';
+import '../../integrations/presentation/widgets/integration_list_item.dart';
+import '../../integrations/presentation/pages/integration_detail_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -13,6 +16,7 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefsAsync = ref.watch(userPreferencesProvider);
+    final integrationsAsync = ref.watch(integrationsStreamProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
@@ -51,6 +55,8 @@ class SettingsPage extends ConsumerWidget {
                 colorScheme: colorScheme,
               ),
               OrbitSpacing.gapXl,
+              _buildConnectionsSection(context, ref, textTheme, colorScheme, integrationsAsync),
+              OrbitSpacing.gapXl,
               _buildSection(
                 title: 'Support',
                 items: [
@@ -77,6 +83,76 @@ class SettingsPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
+    );
+  }
+
+  Widget _buildConnectionsSection(
+    BuildContext context,
+    WidgetRef ref,
+    TextTheme textTheme,
+    ColorScheme colorScheme,
+    AsyncValue<List<dynamic>> integrationsAsync,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: OrbitSpacing.sm, bottom: OrbitSpacing.sm),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              OrbitSectionHeader(
+                title: 'Connections',
+                titleStyle: textTheme.titleSmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              integrationsAsync.when(
+                data: (integrations) {
+                  final connected = integrations.where((i) => i.status == IntegrationStatus.connected).length;
+                  return Text(
+                    'Connected: $connected / ${integrations.length}',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                  );
+                },
+                loading: () => const SizedBox(),
+                error: (_, __) => const SizedBox(),
+              ),
+            ],
+          ),
+        ),
+        OrbitGroupCard(
+          borderRadius: OrbitRadius.brLg,
+          children: integrationsAsync.when(
+            data: (integrations) => integrations.asMap().entries.map((entry) {
+              final index = entry.key;
+              final integration = entry.value;
+              final isLast = index == integrations.length - 1;
+
+              return Column(
+                children: [
+                  IntegrationListItem(
+                    integration: integration,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => IntegrationDetailPage(integrationId: integration.id),
+                        ),
+                      );
+                    },
+                  ),
+                  if (!isLast) const Divider(height: 1, indent: 72),
+                ],
+              );
+            }).toList(),
+            loading: () => [const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()))],
+            error: (e, _) => [Padding(padding: const EdgeInsets.all(16.0), child: Text('Error: $e'))],
+          ),
+        ),
+      ],
     );
   }
 

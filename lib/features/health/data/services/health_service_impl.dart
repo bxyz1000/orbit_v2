@@ -78,13 +78,34 @@ class HealthServiceImpl implements IHealthService {
 
       // 2. Raw Data Points
       debugPrint('HealthService: [7] Querying getHealthDataFromTypes for $_types');
-      final data = await _health.getHealthDataFromTypes(
-        startTime: midnight,
-        endTime: endTime,
-        types: _types,
-      );
+      final List<HealthDataPoint> data;
+      try {
+        data = await _health.getHealthDataFromTypes(
+          startTime: midnight,
+          endTime: endTime,
+          types: _types,
+        );
+      } catch (e) {
+        debugPrint('HealthService: [ERR] getHealthDataFromTypes failed: $e');
+        return HealthSnapshot(
+          steps: steps,
+          calories: 0,
+          distance: 0,
+          activeMinutes: 0,
+          sleepMinutes: 0,
+          workoutMinutes: 0,
+          timestamp: now,
+        );
+      }
       
       debugPrint('HealthService: [8] Raw query completed. Count: ${data.length}');
+
+      if (data.isEmpty) {
+        debugPrint('HealthService: [9] NO RECORDS RETURNED for specified types and range.');
+        debugPrint('  - Start: $midnight');
+        debugPrint('  - End: $endTime');
+        debugPrint('  - Types: $_types');
+      }
 
       int stepsFromPoints = 0;
       for (var point in data) {

@@ -54,6 +54,7 @@ class HealthRepository {
         count: snapshot.steps,
         calories: snapshot.calories,
         distance: snapshot.distance,
+        activeMinutes: snapshot.activeMinutes,
       );
       await _isar.stepLogs.put(stepLog);
 

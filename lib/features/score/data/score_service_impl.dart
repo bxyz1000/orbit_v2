@@ -213,19 +213,20 @@ class ScoreServiceImpl implements ScoreService {
       steps: stepLog?.count ?? 0,
       calories: stepLog?.calories ?? 0,
       distance: stepLog?.distance ?? 0,
-      activeMinutes: 0, 
+      activeMinutes: stepLog?.activeMinutes ?? 0, 
       sleepMinutes: sleepLog?.durationMinutes ?? 0,
       workoutMinutes: workoutMinutes,
       timestamp: DateTime.now(),
     );
 
+    final healthScore = HealthScoreCalculator.calculateScore(healthSnapshot);
+    
+    // Detailed breakdown for DailyScore
     final stepsPoints = (healthSnapshot.steps >= 10000) ? 15 : (healthSnapshot.steps >= 5000 ? 8 : 0);
     final workoutPoints = (healthSnapshot.workoutMinutes >= 30) ? 20 : (healthSnapshot.workoutMinutes >= 15 ? 10 : 0);
     const sleepGoalMins = 8 * 60;
     final sleepDiff = (healthSnapshot.sleepMinutes - sleepGoalMins).abs();
     final sleepPoints = healthSnapshot.sleepMinutes > 0 ? (sleepDiff <= 60 ? 15 : (sleepDiff <= 120 ? 8 : 0)) : 0;
-    
-    final healthScore = stepsPoints + workoutPoints + sleepPoints;
 
     // 5. Planner Score
     final plannerEvents = await _plannerRepository.getAllEvents();

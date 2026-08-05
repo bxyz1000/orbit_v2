@@ -12,6 +12,7 @@ class StepLog {
   late int count;
   late double calories;
   late double distance;
+  late int activeMinutes;
 
   StepLog();
 
@@ -20,6 +21,7 @@ class StepLog {
     required this.count,
     this.calories = 0,
     this.distance = 0,
+    this.activeMinutes = 0,
   });
 }
 
