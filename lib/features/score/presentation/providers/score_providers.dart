@@ -5,6 +5,7 @@ import '../../domain/services/motivation_service.dart';
 import '../../data/score_service_impl.dart';
 import '../../data/motivation_service_impl.dart';
 import '../../../../shared/providers/repository_providers.dart';
+import '../../../health/presentation/providers/health_providers.dart';
 import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
 import 'package:orbit_v2/features/score/domain/entities/weekly_score.dart';
 import 'package:orbit_v2/features/score/domain/entities/monthly_score.dart';
@@ -20,7 +21,7 @@ final scoreServiceProvider = Provider<ScoreService>((ref) {
     ref.watch(habitRepositoryProvider),
     ref.watch(focusRepositoryProvider),
     ref.watch(plannerRepositoryProvider),
-    ref.watch(healthRepositoryProvider),
+    ref.watch(healthRepoProvider),
     ref.watch(goalRepositoryProvider),
   );
 });
@@ -50,7 +51,7 @@ final productivityDataChangesProvider = StreamProvider<void>((ref) async* {
   final habitRepo = ref.watch(habitRepositoryProvider);
   final focusRepo = ref.watch(focusRepositoryProvider);
   final plannerRepo = ref.watch(plannerRepositoryProvider);
-  final healthRepo = ref.watch(healthRepositoryProvider);
+  final healthRepo = ref.watch(healthRepoProvider);
   final goalRepo = ref.watch(goalRepositoryProvider);
 
   final streams = [

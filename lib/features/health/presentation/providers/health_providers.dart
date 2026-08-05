@@ -1,13 +1,20 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/health_snapshot.dart';
-import '../../domain/repositories/i_health_service.dart';
-import '../../data/services/health_service_impl.dart';
-
-import '../../../../features/score/presentation/providers/score_providers.dart';
+import 'package:orbit_v2/features/health/domain/entities/health_snapshot.dart';
+import 'package:orbit_v2/features/health/domain/repositories/i_health_service.dart';
+import 'package:orbit_v2/features/health/data/services/health_service_impl.dart';
+import 'package:orbit_v2/features/health/data/health_repository.dart';
+import 'package:orbit_v2/features/score/presentation/providers/score_providers.dart';
+import 'package:orbit_v2/shared/providers/repository_providers.dart';
 
 final healthServiceProvider = Provider<IHealthService>((ref) {
   return HealthServiceImpl();
+});
+
+final healthRepoProvider = Provider<HealthRepository>((ref) {
+  final isar = ref.watch(isarProvider);
+  final service = ref.watch(healthServiceProvider);
+  return HealthRepository(isar, service);
 });
 
 final healthAuthorizationProvider = FutureProvider<bool>((ref) async {
@@ -30,11 +37,9 @@ final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
   // Watch for Isar changes
   ref.watch(productivityDataChangesProvider);
 
-  // We rely on the sync provider to update Isar.
-  // This provider will read the latest from Isar.
-  final repo = ref.watch(healthRepositoryProvider);
+  // Read latest from Isar
+  final repo = ref.watch(healthRepoProvider);
   
-  // We combine the data from different Isar collections for today
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
   
