@@ -10,7 +10,6 @@ class HealthServiceImpl implements IHealthService {
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
     HealthDataType.DISTANCE_DELTA,
-    HealthDataType.EXERCISE_TIME,
     HealthDataType.SLEEP_SESSION,
     HealthDataType.WORKOUT,
   ];
@@ -18,7 +17,9 @@ class HealthServiceImpl implements IHealthService {
   @override
   Future<bool> isAuthorized() async {
     try {
-      debugPrint('HealthService: [1] Checking authorization...');
+      debugPrint('HealthService: [1] Configuring health plugin...');
+      await _health.configure();
+      debugPrint('HealthService: [2] Checking authorization...');
       final hasPermissions = await _health.hasPermissions(_types);
       debugPrint('HealthService: [2] Has permissions result: $hasPermissions');
       return hasPermissions ?? false;
@@ -34,13 +35,17 @@ class HealthServiceImpl implements IHealthService {
       debugPrint('HealthService: [1] Configuring client for auth...');
       await _health.configure();
       
+      final hcAvailable = await _health.isHealthConnectAvailable();
+      debugPrint('HealthService: [1.5] Health Connect Available: $hcAvailable');
+      
       debugPrint('HealthService: [2] Requesting authorization for types: $_types');
       final result = await _health.requestAuthorization(_types);
       debugPrint('HealthService: [3] Authorization request result: $result');
       
       return result;
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('HealthService: [ERR] Exception during requestAuthorization: $e');
+      debugPrint('HealthService: [ERR] Stack: $stack');
       rethrow;
     }
   }

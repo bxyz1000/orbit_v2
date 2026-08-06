@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 import '../domain/health_metrics.dart';
 import '../domain/repositories/i_health_service.dart';
-import '../domain/entities/health_snapshot.dart';
 
 class HealthRepository {
   final Isar _isar;
@@ -38,13 +37,13 @@ class HealthRepository {
     }
     
     debugPrint('HealthRepo: [1] Starting sync for $date');
-    final isAuthorized = await _healthService!.isAuthorized();
+    final isAuthorized = await _healthService.isAuthorized();
     if (!isAuthorized) {
       debugPrint('HealthRepo: [WARN] Sync skipped - Not authorized');
       return;
     }
 
-    final snapshot = await _healthService!.getHealthSnapshot(date);
+    final snapshot = await _healthService.getHealthSnapshot(date);
     debugPrint('HealthRepo: [2] Snapshot received from service: steps=${snapshot.steps}');
     
     await _isar.writeTxn(() async {
