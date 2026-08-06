@@ -39,14 +39,13 @@ class OrbitStatCard extends StatelessWidget {
               Icon(icon, color: colorScheme.primary, size: 20),
               OrbitSpacing.gapSm,
             ],
-            Text(
-              value,
+            _AnimatedStatValue(
+              value: value,
               style: valueStyle ??
                   theme.textTheme.titleMedium?.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
-              textAlign: TextAlign.center,
             ),
             OrbitSpacing.gapXs,
             Text(
@@ -60,5 +59,48 @@ class OrbitStatCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _AnimatedStatValue extends StatelessWidget {
+  final String value;
+  final TextStyle? style;
+
+  const _AnimatedStatValue({required this.value, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    // Check if the value is a simple number or a fraction like "3/5" or a duration like "20m"
+    final numberMatch = RegExp(r'^(\d+)(.*)$').firstMatch(value);
+    final fractionMatch = RegExp(r'^(\d+)/(\d+)(.*)$').firstMatch(value);
+
+    if (fractionMatch != null) {
+      final current = int.tryParse(fractionMatch.group(1) ?? '') ?? 0;
+      final total = fractionMatch.group(2) ?? '';
+      final suffix = fractionMatch.group(3) ?? '';
+      
+      return TweenAnimationBuilder<int>(
+        tween: IntTween(begin: 0, end: current),
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeOutCubic,
+        builder: (context, val, child) {
+          return Text('$val/$total$suffix', style: style, textAlign: TextAlign.center);
+        },
+      );
+    } else if (numberMatch != null) {
+      final numValue = int.tryParse(numberMatch.group(1) ?? '') ?? 0;
+      final suffix = numberMatch.group(2) ?? '';
+
+      return TweenAnimationBuilder<int>(
+        tween: IntTween(begin: 0, end: numValue),
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeOutCubic,
+        builder: (context, val, child) {
+          return Text('$val$suffix', style: style, textAlign: TextAlign.center);
+        },
+      );
+    }
+
+    return Text(value, style: style, textAlign: TextAlign.center);
   }
 }

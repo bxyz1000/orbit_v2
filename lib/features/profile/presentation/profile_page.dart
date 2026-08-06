@@ -256,15 +256,11 @@ class ProfilePage extends ConsumerWidget {
   }
 
   Widget _buildBottomButton() {
-    return SizedBox(
+    return const SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: () {},
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: OrbitSpacing.lg),
-          shape: const RoundedRectangleBorder(borderRadius: OrbitRadius.brMd),
-        ),
-        child: const Text('Coming Soon'),
+        onPressed: null, // Disabled
+        child: Text('More features coming soon'),
       ),
     );
   }

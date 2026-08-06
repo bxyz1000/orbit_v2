@@ -3,18 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_stat_card.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
-import '../../score/score.dart';
-import '../../../shared/providers/data_providers.dart';
 import '../../health/presentation/providers/health_providers.dart';
-import 'widgets/score_progress_ring.dart';
-import 'widgets/weekly_score_chart.dart';
-import 'widgets/score_breakdown_bars.dart';
-import 'widgets/consistency_heatmap.dart';
+import '../presentation/widgets/score_progress_ring.dart';
+import '../presentation/widgets/weekly_score_chart.dart';
+import '../presentation/widgets/score_breakdown_bars.dart';
+import '../presentation/widgets/consistency_heatmap.dart';
+import '../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../dashboard/domain/entities/dashboard_state.dart';
 
 class OrbitHomePage extends ConsumerStatefulWidget {
   final VoidCallback onProfileTap;
@@ -50,14 +49,12 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
     debugPrint('OrbitHome: Refreshing health data on resume/init');
     ref.invalidate(healthSyncProvider);
     ref.invalidate(todayHealthSnapshotProvider);
-    await ref.read(healthSyncProvider.future);
-    debugPrint('OrbitHome: Health sync completed');
+    // dashboardProvider will automatically rebuild because it watches health records in Isar
   }
 
   @override
   Widget build(BuildContext context) {
-    final scoreAsync = ref.watch(currentDailyScoreProvider);
-    final yesterdayScoreAsync = ref.watch(yesterdayScoreProvider);
+    final dashboardAsync = ref.watch(dashboardProvider);
     final healthAuthorized = ref.watch(healthAuthorizationProvider);
     
     return Scaffold(
@@ -75,17 +72,13 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
           const SizedBox(width: 8),
         ],
       ),
-      body: scoreAsync.when(
-        data: (score) => RefreshIndicator(
+      body: dashboardAsync.when(
+        data: (state) => RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(currentDailyScoreProvider);
-            ref.invalidate(yesterdayScoreProvider);
-            ref.invalidate(pendingTasksProvider);
-            ref.invalidate(todayEventsProvider);
+            ref.invalidate(dashboardProvider);
             ref.invalidate(healthSyncProvider);
             ref.invalidate(todayHealthSnapshotProvider);
-            await ref.read(healthSyncProvider.future);
-            debugPrint('OrbitHome: Pull-to-refresh completed');
+            await ref.read(dashboardProvider.future);
           },
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(OrbitSpacing.xl),
@@ -93,23 +86,25 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeroSection(context, score, yesterdayScoreAsync.asData?.value),
+                _buildHeroSection(context, state),
                 OrbitSpacing.gapXxl,
-                _buildNextBestAction(context, score, yesterdayScoreAsync.asData?.value),
+                _buildNextBestAction(context, state),
                 OrbitSpacing.gapXxl,
                 if (healthAuthorized.asData?.value == false) ...[
                   _buildHealthConnectBanner(context, ref),
                   OrbitSpacing.gapXxl,
                 ],
-                const OrbitSectionHeader(title: "Today's Mission"),
+                const OrbitSectionHeader(title: "Today's Timeline"),
                 OrbitSpacing.gapLg,
-                _buildDailyMission(ref, context),
+                _buildTimeline(context, state),
                 OrbitSpacing.gapXxl,
-                _buildUpcomingEvent(ref, context),
-                OrbitSpacing.gapXxl,
+                if (state.todayEvents.isNotEmpty) ...[
+                  _buildUpcomingEvent(state, context),
+                  OrbitSpacing.gapXxl,
+                ],
                 const OrbitSectionHeader(title: "Current Progress"),
                 OrbitSpacing.gapLg,
-                _buildProgressGrid(ref, score),
+                _buildProgressGrid(state),
                 OrbitSpacing.gapXxl,
                 const OrbitSectionHeader(title: "Consistency Heatmap"),
                 OrbitSpacing.gapLg,
@@ -120,18 +115,31 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                 OrbitSpacing.gapXxl,
                 const OrbitSectionHeader(title: "Performance Trends"),
                 OrbitSpacing.gapLg,
-                _buildCharts(ref),
+                _buildCharts(state),
                 OrbitSpacing.gapXxl,
                 const OrbitSectionHeader(title: "Milestones"),
                 OrbitSpacing.gapLg,
-                _buildMilestones(ref),
+                _buildMilestones(state),
                 const SizedBox(height: OrbitSpacing.huge),
               ],
             ),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              OrbitSpacing.gapMd,
+              Text('Error loading dashboard: $e'),
+              TextButton(
+                onPressed: () => ref.invalidate(dashboardProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -155,40 +163,26 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                   ),
                   Text(
                     "Sync steps, sleep, and workouts automatically.",
-                    style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.6)),
+                    style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
               ),
             ),
             ElevatedButton(
               onPressed: () async {
-                debugPrint('OrbitHome: Connect Health button pressed');
                 try {
                   final success = await ref.read(healthServiceProvider).requestAuthorization();
-                  debugPrint('OrbitHome: Authorization result: $success');
-                  
                   if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Health Connect authorized!')),
-                    );
-                    // Force refresh all health related data
                     ref.invalidate(healthAuthorizationProvider);
-                    ref.invalidate(todayHealthSnapshotProvider);
-                    ref.invalidate(currentDailyScoreProvider);
-                    
-                    // Trigger a sync
-                    await ref.read(healthSyncProvider.future);
-                    debugPrint('OrbitHome: Health sync after authorization completed');
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Health Connect authorization failed or denied.')),
-                    );
+                    ref.invalidate(healthSyncProvider);
+                    ref.invalidate(dashboardProvider);
                   }
                 } catch (e) {
-                  debugPrint('OrbitHome: Exception in requestAuthorization: $e');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                    );
+                  }
                 }
               },
               child: const Text("Connect"),
@@ -199,36 +193,29 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
     );
   }
 
-  Widget _buildHeroSection(BuildContext context, DailyScore score, DailyScore? yesterday) {
+  Widget _buildHeroSection(BuildContext context, DashboardState state) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    final diff = yesterday != null ? score.totalScore - yesterday.totalScore : 0;
-    final toBeat = yesterday != null ? (yesterday.totalScore + 1) - score.totalScore : 50 - score.totalScore;
-    final completionPct = (score.totalScore / 100).clamp(0.0, 1.0);
+    final toBeat = state.beatYesterdayScore;
+    final completionPct = (state.orbitScore.totalScore / 100).clamp(0.0, 1.0);
 
     return Center(
       child: Column(
         children: [
           ScoreProgressRing(
-            score: score.totalScore,
+            score: state.orbitScore.totalScore,
             progress: completionPct,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TweenAnimationBuilder<int>(
-                  tween: IntTween(begin: 0, end: score.totalScore),
-                  duration: const Duration(seconds: 2),
-                  builder: (context, value, child) {
-                    return Text(
-                      '$value',
-                      style: theme.textTheme.displayLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: colorScheme.onSurface,
-                        fontSize: 64,
-                      ),
-                    );
-                  },
+                _CountupText(
+                  value: state.orbitScore.totalScore,
+                  style: theme.textTheme.displayLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: colorScheme.onSurface,
+                    fontSize: 64,
+                  ),
                 ),
                 Text(
                   'ORBIT SCORE',
@@ -245,26 +232,17 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (yesterday != null) ...[
-                Icon(
-                  diff >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                  size: 16,
-                  color: diff >= 0 ? Colors.green : Colors.red,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${diff.abs()} vs yesterday',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: diff >= 0 ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 16),
-              ],
+              Icon(
+                toBeat > 0 ? Icons.trending_up : Icons.stars,
+                size: 16,
+                color: toBeat > 0 ? colorScheme.primary : Colors.green,
+              ),
+              const SizedBox(width: 4),
               Text(
                 toBeat > 0 ? '$toBeat to beat yesterday' : 'Yesterday beaten! 🎉',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: toBeat > 0 ? colorScheme.onSurface.withValues(alpha: 0.6) : Colors.green,
+                  fontWeight: toBeat > 0 ? FontWeight.normal : FontWeight.bold,
                 ),
               ),
             ],
@@ -274,19 +252,21 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
     );
   }
 
-  Widget _buildNextBestAction(BuildContext context, DailyScore score, DailyScore? yesterday) {
+  Widget _buildNextBestAction(BuildContext context, DashboardState state) {
     String recommendation = "One focus session will unlock today's potential.";
     IconData icon = Icons.timer_outlined;
     Color accentColor = Theme.of(context).colorScheme.primary;
 
-    if (score.taskScore == 0) {
+    if (state.orbitScore.taskScore == 0 && state.taskSummary.remaining > 0) {
       recommendation = "Complete your first task to start your daily climb.";
       icon = Icons.check_circle_outline;
-    } else if (yesterday != null && score.totalScore < yesterday.totalScore) {
-      final diff = (yesterday.totalScore + 1) - score.totalScore;
-      recommendation = "You are only $diff points away from beating yesterday.";
+    } else if (state.beatYesterdayScore > 0) {
+      recommendation = "You are only ${state.beatYesterdayScore} points away from beating yesterday.";
       icon = Icons.auto_awesome;
       accentColor = Colors.orange;
+    } else if (state.focusMinutesCompleted < state.focusMinutesTarget) {
+      recommendation = "Maintain your momentum with another focus session.";
+      icon = Icons.timer_outlined;
     }
 
     return OrbitGroupCard(
@@ -330,231 +310,169 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
     );
   }
 
-  Widget _buildDailyMission(WidgetRef ref, BuildContext context) {
-    final pendingTasksAsync = ref.watch(pendingTasksProvider);
+  Widget _buildTimeline(BuildContext context, DashboardState state) {
+    if (state.todayTimeline.isEmpty) {
+      return const OrbitGroupCard(
+        children: [
+          OrbitInfoTile(
+            icon: Icons.auto_awesome_mosaic,
+            title: "Your day is a blank canvas",
+            subtitle: "Start an activity to see it here.",
+          ),
+        ],
+      );
+    }
 
-    return pendingTasksAsync.when(
-      data: (tasks) {
-        if (tasks.isEmpty) {
-          return const OrbitGroupCard(
-            children: [
-              OrbitInfoTile(
-                icon: Icons.celebration,
-                title: "Mission Accomplished!",
-                subtitle: "You've completed all your primary tasks for today.",
-              ),
-            ],
-          );
-        }
-
-        return OrbitGroupCard(
-          children: tasks.take(3).map((task) => Column(
-            children: [
-              OrbitInfoTile(
-                icon: Icons.circle_outlined,
-                title: task.title,
-                subtitle: "Mission: Complete this task",
-                trailing: const Icon(Icons.chevron_right, size: 16),
-              ),
-              if (tasks.indexOf(task) < math.min(tasks.length, 3) - 1) const Divider(height: 1),
-            ],
-          )).toList(),
-        );
-      },
-      loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-      error: (_, __) => const SizedBox(),
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 280),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16), // OrbitRadius.brMd
+      ),
+      child: OrbitGroupCard(
+        children: [
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: state.todayTimeline.length,
+              separatorBuilder: (context, index) => const Divider(height: 1, indent: 56),
+              itemBuilder: (context, index) {
+                final item = state.todayTimeline[index];
+                return OrbitInfoTile(
+                  icon: _getTimelineIcon(item.type),
+                  title: item.title,
+                  subtitle: item.subtitle ?? _formatTimestamp(item.timestamp),
+                  trailing: item.isCompleted 
+                      ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
+                      : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 16),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildUpcomingEvent(WidgetRef ref, BuildContext context) {
-    final eventsAsync = ref.watch(todayEventsProvider);
-    
-    return eventsAsync.when(
-      data: (events) {
-        final upcoming = events.where((e) => !e.isCompleted).firstOrNull;
+  IconData _getTimelineIcon(TimelineItemType type) {
+    switch (type) {
+      case TimelineItemType.task: return Icons.check_circle_outline;
+      case TimelineItemType.focus: return Icons.timer_outlined;
+      case TimelineItemType.planner: return Icons.calendar_today_outlined;
+      case TimelineItemType.health: return Icons.health_and_safety_outlined;
+      case TimelineItemType.goal: return Icons.flag_outlined;
+      case TimelineItemType.habit: return Icons.repeat;
+    }
+  }
 
-        if (upcoming == null) return const SizedBox();
+  String _formatTimestamp(DateTime dt) {
+    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:${dt.minute.toString().padLeft(2, '0')} $period';
+  }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildUpcomingEvent(DashboardState state, BuildContext context) {
+    final upcoming = state.todayEvents.where((e) => !e.isCompleted).firstOrNull;
+    if (upcoming == null) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const OrbitSectionHeader(title: "Upcoming Event"),
+        OrbitSpacing.gapLg,
+        OrbitGroupCard(
+          padding: const EdgeInsets.all(OrbitSpacing.lg),
           children: [
-            const OrbitSectionHeader(title: "Upcoming Event"),
-            OrbitSpacing.gapLg,
-            OrbitGroupCard(
-              padding: const EdgeInsets.all(OrbitSpacing.lg),
+            Row(
               children: [
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(upcoming.startTime, style: Theme.of(context).textTheme.labelSmall),
-                        Text(upcoming.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const Spacer(),
-                    _CountdownWidget(startTime: upcoming.startTime),
+                    Text(upcoming.startTime, style: Theme.of(context).textTheme.labelSmall),
+                    Text(upcoming.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                   ],
                 ),
+                const Spacer(),
+                _CountdownWidget(startTime: upcoming.startTime),
               ],
             ),
           ],
-        );
-      },
-      loading: () => const SizedBox(),
-      error: (_, __) => const SizedBox(),
-    );
-  }
-
-  Widget _buildProgressGrid(WidgetRef ref, DailyScore score) {
-    final tasksAsync = ref.watch(pendingTasksProvider);
-    final habitsAsync = ref.watch(allHabitsProvider);
-    final completedHabitsCount = ref.watch(completedHabitsTodayCountProvider);
-    final sessionsAsync = ref.watch(todaySessionsProvider);
-    final healthSnapshotAsync = ref.watch(todayHealthSnapshotProvider);
-
-    debugPrint('OrbitHome: [ProgressGrid] Rebuilding grid...');
-    if (healthSnapshotAsync.hasValue) {
-      debugPrint('OrbitHome: [ProgressGrid] Data: steps=${healthSnapshotAsync.value?.steps}');
-    }
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: tasksAsync.when(
-                data: (pending) {
-                  final completed = score.taskScore ~/ 10;
-                  final total = completed + pending.length;
-                  return OrbitStatCard(
-                    title: 'Tasks', 
-                    value: '$completed/$total', 
-                    icon: Icons.task_alt
-                  );
-                },
-                loading: () => const OrbitStatCard(title: 'Tasks', value: '...', icon: Icons.task_alt),
-                error: (err, _) {
-                  debugPrint('OrbitHome: [ProgressGrid] Tasks Error: $err');
-                  return const OrbitStatCard(title: 'Tasks', value: 'Err', icon: Icons.task_alt);
-                },
-              ),
-            ),
-            const SizedBox(width: OrbitSpacing.md),
-            Expanded(
-              child: sessionsAsync.when(
-                data: (sessions) {
-                   final focusMinutes = sessions.fold<int>(0, (sum, s) => sum + s.duration);
-                   return OrbitStatCard(
-                    title: 'Focus', 
-                    value: '${focusMinutes}m', 
-                    icon: Icons.timer
-                  );
-                },
-                loading: () => const OrbitStatCard(title: 'Focus', value: '...', icon: Icons.timer),
-                error: (err, _) {
-                  debugPrint('OrbitHome: [ProgressGrid] Focus Error: $err');
-                  return const OrbitStatCard(title: 'Focus', value: 'Err', icon: Icons.timer);
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: OrbitSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: habitsAsync.when(
-                data: (habits) {
-                  final completed = completedHabitsCount.asData?.value ?? 0;
-                  return OrbitStatCard(
-                    title: 'Habits', 
-                    value: '$completed/${habits.length}', 
-                    icon: Icons.repeat
-                  );
-                },
-                loading: () => const OrbitStatCard(title: 'Habits', value: '...', icon: Icons.repeat),
-                error: (err, _) {
-                  debugPrint('OrbitHome: [ProgressGrid] Habits Error: $err');
-                  return const OrbitStatCard(title: 'Habits', value: 'Err', icon: Icons.repeat);
-                },
-              ),
-            ),
-            const SizedBox(width: OrbitSpacing.md),
-            Expanded(
-              child: healthSnapshotAsync.when(
-                data: (snapshot) {
-                  debugPrint('OrbitHome: [ProgressGrid] Displaying real steps: ${snapshot.steps}');
-                  return OrbitStatCard(
-                    title: 'Steps', 
-                    value: '${snapshot.steps}', 
-                    icon: Icons.directions_walk
-                  );
-                },
-                loading: () => const OrbitStatCard(title: 'Steps', value: '...', icon: Icons.directions_walk),
-                error: (err, _) {
-                  debugPrint('OrbitHome: [ProgressGrid] Steps Error: $err');
-                  return const OrbitStatCard(title: 'Steps', value: 'Err', icon: Icons.directions_walk);
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: OrbitSpacing.md),
-        healthSnapshotAsync.when(
-          data: (snapshot) => Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: OrbitStatCard(
-                      title: 'Calories', 
-                      value: '${snapshot.calories.toInt()} kcal', 
-                      icon: Icons.local_fire_department
-                    ),
-                  ),
-                  const SizedBox(width: OrbitSpacing.md),
-                  Expanded(
-                    child: OrbitStatCard(
-                      title: 'Sleep', 
-                      value: snapshot.sleepMinutes > 0 
-                        ? '${snapshot.sleepMinutes ~/ 60}h ${snapshot.sleepMinutes % 60}m' 
-                        : '0m', 
-                      icon: Icons.nightlight_round
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: OrbitSpacing.md),
-              Row(
-                children: [
-                   Expanded(
-                    child: OrbitStatCard(
-                      title: 'Distance', 
-                      value: '${(snapshot.distance / 1000).toStringAsFixed(2)} km', 
-                      icon: Icons.map
-                    ),
-                  ),
-                  const SizedBox(width: OrbitSpacing.md),
-                  Expanded(
-                    child: OrbitStatCard(
-                      title: 'Active', 
-                      value: '${snapshot.activeMinutes}m', 
-                      icon: Icons.bolt
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          loading: () => const SizedBox(),
-          error: (_, __) => const SizedBox(),
         ),
       ],
     );
   }
 
-  Widget _buildCharts(WidgetRef ref) {
+  Widget _buildProgressGrid(DashboardState state) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OrbitStatCard(
+                title: 'Tasks', 
+                value: '${state.tasksCompleted}/${state.tasksCompleted + state.tasksRemaining}', 
+                icon: Icons.task_alt
+              ),
+            ),
+            const SizedBox(width: OrbitSpacing.md),
+            Expanded(
+              child: OrbitStatCard(
+                title: 'Focus', 
+                value: '${state.focusMinutesCompleted}m', 
+                icon: Icons.timer
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: OrbitSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: OrbitStatCard(
+                title: 'Goals', 
+                value: '${state.goalsCompleted}/${state.goalsCompleted + state.goalsRemaining}', 
+                icon: Icons.flag
+              ),
+            ),
+            const SizedBox(width: OrbitSpacing.md),
+            Expanded(
+              child: OrbitStatCard(
+                title: 'Steps', 
+                value: '${state.healthSteps}', 
+                icon: Icons.directions_walk
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: OrbitSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: OrbitStatCard(
+                title: 'Calories', 
+                value: '${state.healthCalories.toInt()}', 
+                icon: Icons.local_fire_department
+              ),
+            ),
+            const SizedBox(width: OrbitSpacing.md),
+            Expanded(
+              child: OrbitStatCard(
+                title: 'Sleep', 
+                value: state.healthSleepMinutes > 0 
+                  ? '${state.healthSleepMinutes ~/ 60}h ${state.healthSleepMinutes % 60}m' 
+                  : '0m', 
+                icon: Icons.nightlight_round
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCharts(DashboardState state) {
     return Column(
       children: [
         OrbitGroupCard(
@@ -571,36 +489,57 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
           children: [
             const Text('SCORE CONTRIBUTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
             const SizedBox(height: 16),
-            Consumer(builder: (context, ref, _) {
-              final score = ref.watch(currentDailyScoreProvider).asData?.value;
-              if (score == null) return const SizedBox();
-              return ScoreBreakdownBars(score: score);
-            }),
+            ScoreBreakdownBars(score: state.orbitScore),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildMilestones(WidgetRef ref) {
-    final achievementsAsync = ref.watch(unlockedAchievementsProvider);
-
-    return achievementsAsync.when(
-      data: (achievements) => OrbitGroupCard(
+  Widget _buildMilestones(DashboardState state) {
+    if (state.personalRecords.isEmpty) {
+       return const OrbitGroupCard(
         children: [
-          if (achievements.isEmpty)
-            const OrbitInfoTile(title: "No milestones yet", subtitle: "Complete your first task to start.")
-          else
-            ...achievements.take(2).map((a) => OrbitInfoTile(
-              icon: Icons.stars,
-              title: a.title,
-              subtitle: a.description,
-              trailing: const Icon(Icons.check_circle, color: Colors.green, size: 16),
-            )),
+          OrbitInfoTile(title: "No milestones yet", subtitle: "Stay consistent to unlock rewards.")
         ],
-      ),
-      loading: () => const SizedBox(),
-      error: (_, __) => const SizedBox(),
+      );
+    }
+
+    return OrbitGroupCard(
+      children: state.personalRecords.take(2).map((a) => Column(
+        children: [
+          OrbitInfoTile(
+            icon: Icons.stars,
+            title: a.recordType.replaceAll('_', ' ').toUpperCase(),
+            subtitle: "Record achieved!",
+            trailing: Text(
+              '${a.value.toInt()}', 
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)
+            ),
+          ),
+          if (state.personalRecords.indexOf(a) < math.min(state.personalRecords.length, 2) - 1) 
+            const Divider(height: 1, indent: 56),
+        ],
+      )).toList(),
+    );
+  }
+}
+
+class _CountupText extends StatelessWidget {
+  final int value;
+  final TextStyle? style;
+
+  const _CountupText({required this.value, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<int>(
+      tween: IntTween(begin: 0, end: value),
+      duration: const Duration(seconds: 1),
+      curve: Curves.easeOutCubic,
+      builder: (context, val, child) {
+        return Text('$val', style: style);
+      },
     );
   }
 }
