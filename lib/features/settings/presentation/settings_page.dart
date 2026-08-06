@@ -6,6 +6,7 @@ import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import 'providers/preferences_providers.dart';
+import '../../integrations/domain/entities/integration.dart';
 import '../../integrations/presentation/providers/integration_providers.dart';
 import '../../integrations/presentation/widgets/integration_list_item.dart';
 import '../../integrations/presentation/pages/integration_detail_page.dart';
@@ -91,7 +92,7 @@ class SettingsPage extends ConsumerWidget {
     WidgetRef ref,
     TextTheme textTheme,
     ColorScheme colorScheme,
-    AsyncValue<List<dynamic>> integrationsAsync,
+    AsyncValue<List<Integration>> integrationsAsync,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

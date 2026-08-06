@@ -17,23 +17,23 @@ const IntegrationModelSchema = CollectionSchema(
   name: r'IntegrationModel',
   id: 2031226668022466059,
   properties: {
-    r'id': PropertySchema(id: 0, name: r'id', type: IsarType.string),
     r'isSupported': PropertySchema(
-      id: 1,
+      id: 0,
       name: r'isSupported',
       type: IsarType.bool,
     ),
     r'lastSync': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'lastSync',
       type: IsarType.dateTime,
     ),
     r'metadataJson': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'metadataJson',
       type: IsarType.string,
     ),
-    r'name': PropertySchema(id: 4, name: r'name', type: IsarType.string),
+    r'name': PropertySchema(id: 3, name: r'name', type: IsarType.string),
+    r'orbitId': PropertySchema(id: 4, name: r'orbitId', type: IsarType.string),
     r'status': PropertySchema(
       id: 5,
       name: r'status',
@@ -46,8 +46,22 @@ const IntegrationModelSchema = CollectionSchema(
   serialize: _integrationModelSerialize,
   deserialize: _integrationModelDeserialize,
   deserializeProp: _integrationModelDeserializeProp,
-  idName: r'isarId',
-  indexes: {},
+  idName: r'id',
+  indexes: {
+    r'orbitId': IndexSchema(
+      id: -5160130454438981071,
+      name: r'orbitId',
+      unique: true,
+      replace: true,
+      properties: [
+        IndexPropertySchema(
+          name: r'orbitId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        ),
+      ],
+    ),
+  },
   links: {},
   embeddedSchemas: {},
 
@@ -63,9 +77,9 @@ int _integrationModelEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.id.length * 3;
   bytesCount += 3 + object.metadataJson.length * 3;
   bytesCount += 3 + object.name.length * 3;
+  bytesCount += 3 + object.orbitId.length * 3;
   return bytesCount;
 }
 
@@ -75,11 +89,11 @@ void _integrationModelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.id);
-  writer.writeBool(offsets[1], object.isSupported);
-  writer.writeDateTime(offsets[2], object.lastSync);
-  writer.writeString(offsets[3], object.metadataJson);
-  writer.writeString(offsets[4], object.name);
+  writer.writeBool(offsets[0], object.isSupported);
+  writer.writeDateTime(offsets[1], object.lastSync);
+  writer.writeString(offsets[2], object.metadataJson);
+  writer.writeString(offsets[3], object.name);
+  writer.writeString(offsets[4], object.orbitId);
   writer.writeByte(offsets[5], object.status.index);
 }
 
@@ -90,11 +104,12 @@ IntegrationModel _integrationModelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = IntegrationModel();
-  object.id = reader.readString(offsets[0]);
-  object.isSupported = reader.readBool(offsets[1]);
-  object.lastSync = reader.readDateTimeOrNull(offsets[2]);
-  object.metadataJson = reader.readString(offsets[3]);
-  object.name = reader.readString(offsets[4]);
+  object.id = id;
+  object.isSupported = reader.readBool(offsets[0]);
+  object.lastSync = reader.readDateTimeOrNull(offsets[1]);
+  object.metadataJson = reader.readString(offsets[2]);
+  object.name = reader.readString(offsets[3]);
+  object.orbitId = reader.readString(offsets[4]);
   object.status =
       _IntegrationModelstatusValueEnumMap[reader.readByteOrNull(offsets[5])] ??
       IntegrationStatus.connected;
@@ -109,11 +124,11 @@ P _integrationModelDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
-    case 1:
       return (reader.readBool(offset)) as P;
-    case 2:
+    case 1:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 2:
+      return (reader.readString(offset)) as P;
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
@@ -143,7 +158,7 @@ const _IntegrationModelstatusValueEnumMap = {
 };
 
 Id _integrationModelGetId(IntegrationModel object) {
-  return object.isarId;
+  return object.id;
 }
 
 List<IsarLinkBase<dynamic>> _integrationModelGetLinks(IntegrationModel object) {
@@ -154,11 +169,70 @@ void _integrationModelAttach(
   IsarCollection<dynamic> col,
   Id id,
   IntegrationModel object,
-) {}
+) {
+  object.id = id;
+}
+
+extension IntegrationModelByIndex on IsarCollection<IntegrationModel> {
+  Future<IntegrationModel?> getByOrbitId(String orbitId) {
+    return getByIndex(r'orbitId', [orbitId]);
+  }
+
+  IntegrationModel? getByOrbitIdSync(String orbitId) {
+    return getByIndexSync(r'orbitId', [orbitId]);
+  }
+
+  Future<bool> deleteByOrbitId(String orbitId) {
+    return deleteByIndex(r'orbitId', [orbitId]);
+  }
+
+  bool deleteByOrbitIdSync(String orbitId) {
+    return deleteByIndexSync(r'orbitId', [orbitId]);
+  }
+
+  Future<List<IntegrationModel?>> getAllByOrbitId(List<String> orbitIdValues) {
+    final values = orbitIdValues.map((e) => [e]).toList();
+    return getAllByIndex(r'orbitId', values);
+  }
+
+  List<IntegrationModel?> getAllByOrbitIdSync(List<String> orbitIdValues) {
+    final values = orbitIdValues.map((e) => [e]).toList();
+    return getAllByIndexSync(r'orbitId', values);
+  }
+
+  Future<int> deleteAllByOrbitId(List<String> orbitIdValues) {
+    final values = orbitIdValues.map((e) => [e]).toList();
+    return deleteAllByIndex(r'orbitId', values);
+  }
+
+  int deleteAllByOrbitIdSync(List<String> orbitIdValues) {
+    final values = orbitIdValues.map((e) => [e]).toList();
+    return deleteAllByIndexSync(r'orbitId', values);
+  }
+
+  Future<Id> putByOrbitId(IntegrationModel object) {
+    return putByIndex(r'orbitId', object);
+  }
+
+  Id putByOrbitIdSync(IntegrationModel object, {bool saveLinks = true}) {
+    return putByIndexSync(r'orbitId', object, saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByOrbitId(List<IntegrationModel> objects) {
+    return putAllByIndex(r'orbitId', objects);
+  }
+
+  List<Id> putAllByOrbitIdSync(
+    List<IntegrationModel> objects, {
+    bool saveLinks = true,
+  }) {
+    return putAllByIndexSync(r'orbitId', objects, saveLinks: saveLinks);
+  }
+}
 
 extension IntegrationModelQueryWhereSort
     on QueryBuilder<IntegrationModel, IntegrationModel, QWhere> {
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhere> anyIsarId() {
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
@@ -167,72 +241,122 @@ extension IntegrationModelQueryWhereSort
 
 extension IntegrationModelQueryWhere
     on QueryBuilder<IntegrationModel, IntegrationModel, QWhereClause> {
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
-  isarIdEqualTo(Id isarId) {
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause> idEqualTo(
+    Id id,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IdWhereClause.between(lower: isarId, upper: isarId),
-      );
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
-  isarIdNotEqualTo(Id isarId) {
+  idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(
-              IdWhereClause.lessThan(upper: isarId, includeUpper: false),
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
             )
             .addWhereClause(
-              IdWhereClause.greaterThan(lower: isarId, includeLower: false),
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
             );
       } else {
         return query
             .addWhereClause(
-              IdWhereClause.greaterThan(lower: isarId, includeLower: false),
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
             )
             .addWhereClause(
-              IdWhereClause.lessThan(upper: isarId, includeUpper: false),
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
             );
       }
     });
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
-  isarIdGreaterThan(Id isarId, {bool include = false}) {
+  idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
-        IdWhereClause.greaterThan(lower: isarId, includeLower: include),
+        IdWhereClause.greaterThan(lower: id, includeLower: include),
       );
     });
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
-  isarIdLessThan(Id isarId, {bool include = false}) {
+  idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
-        IdWhereClause.lessThan(upper: isarId, includeUpper: include),
+        IdWhereClause.lessThan(upper: id, includeUpper: include),
       );
     });
   }
 
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
-  isarIdBetween(
-    Id lowerIsarId,
-    Id upperIsarId, {
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause> idBetween(
+    Id lowerId,
+    Id upperId, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.between(
-          lower: lowerIsarId,
+          lower: lowerId,
           includeLower: includeLower,
-          upper: upperIsarId,
+          upper: upperId,
           includeUpper: includeUpper,
         ),
       );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
+  orbitIdEqualTo(String orbitId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'orbitId', value: [orbitId]),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterWhereClause>
+  orbitIdNotEqualTo(String orbitId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'orbitId',
+                lower: [],
+                upper: [orbitId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'orbitId',
+                lower: [orbitId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
+      } else {
+        return query
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'orbitId',
+                lower: [orbitId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'orbitId',
+                lower: [],
+                upper: [orbitId],
+                includeUpper: false,
+              ),
+            );
+      }
     });
   }
 }
@@ -240,45 +364,35 @@ extension IntegrationModelQueryWhere
 extension IntegrationModelQueryFilter
     on QueryBuilder<IntegrationModel, IntegrationModel, QFilterCondition> {
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idEqualTo(String value, {bool caseSensitive = true}) {
+  idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.equalTo(property: r'id', value: value),
       );
     });
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
+  idGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(
           include: include,
           property: r'id',
           value: value,
-          caseSensitive: caseSensitive,
         ),
       );
     });
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idLessThan(String value, {bool include = false, bool caseSensitive = true}) {
+  idLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.lessThan(
           include: include,
           property: r'id',
           value: value,
-          caseSensitive: caseSensitive,
         ),
       );
     });
@@ -286,11 +400,10 @@ extension IntegrationModelQueryFilter
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
   idBetween(
-    String lower,
-    String upper, {
+    Id lower,
+    Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -300,78 +413,7 @@ extension IntegrationModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
-          caseSensitive: caseSensitive,
         ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idStartsWith(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idEndsWith(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'id',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'id',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'id', value: ''),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  idIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'id', value: ''),
       );
     });
   }
@@ -381,61 +423,6 @@ extension IntegrationModelQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(property: r'isSupported', value: value),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  isarIdEqualTo(Id value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'isarId', value: value),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  isarIdGreaterThan(Id value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'isarId',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  isarIdLessThan(Id value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'isarId',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
-  isarIdBetween(
-    Id lower,
-    Id upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'isarId',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-        ),
       );
     });
   }
@@ -796,6 +783,147 @@ extension IntegrationModelQueryFilter
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdEqualTo(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'orbitId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'orbitId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'orbitId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'orbitId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'orbitId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'orbitId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'orbitId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'orbitId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'orbitId', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
+  orbitIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'orbitId', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterFilterCondition>
   statusEqualTo(IntegrationStatus value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -859,19 +987,6 @@ extension IntegrationModelQueryLinks
 
 extension IntegrationModelQuerySortBy
     on QueryBuilder<IntegrationModel, IntegrationModel, QSortBy> {
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy> sortById() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'id', Sort.asc);
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
-  sortByIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'id', Sort.desc);
-    });
-  }
-
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
   sortByIsSupported() {
     return QueryBuilder.apply(this, (query) {
@@ -928,6 +1043,20 @@ extension IntegrationModelQuerySortBy
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
+  sortByOrbitId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'orbitId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
+  sortByOrbitIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'orbitId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
   sortByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -968,20 +1097,6 @@ extension IntegrationModelQuerySortThenBy
   thenByIsSupportedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSupported', Sort.desc);
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
-  thenByIsarId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isarId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
-  thenByIsarIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'isarId', Sort.desc);
     });
   }
 
@@ -1027,6 +1142,20 @@ extension IntegrationModelQuerySortThenBy
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
+  thenByOrbitId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'orbitId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
+  thenByOrbitIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'orbitId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QAfterSortBy>
   thenByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -1043,14 +1172,6 @@ extension IntegrationModelQuerySortThenBy
 
 extension IntegrationModelQueryWhereDistinct
     on QueryBuilder<IntegrationModel, IntegrationModel, QDistinct> {
-  QueryBuilder<IntegrationModel, IntegrationModel, QDistinct> distinctById({
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'id', caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<IntegrationModel, IntegrationModel, QDistinct>
   distinctByIsSupported() {
     return QueryBuilder.apply(this, (query) {
@@ -1081,6 +1202,13 @@ extension IntegrationModelQueryWhereDistinct
   }
 
   QueryBuilder<IntegrationModel, IntegrationModel, QDistinct>
+  distinctByOrbitId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'orbitId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<IntegrationModel, IntegrationModel, QDistinct>
   distinctByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'status');
@@ -1090,13 +1218,7 @@ extension IntegrationModelQueryWhereDistinct
 
 extension IntegrationModelQueryProperty
     on QueryBuilder<IntegrationModel, IntegrationModel, QQueryProperty> {
-  QueryBuilder<IntegrationModel, int, QQueryOperations> isarIdProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'isarId');
-    });
-  }
-
-  QueryBuilder<IntegrationModel, String, QQueryOperations> idProperty() {
+  QueryBuilder<IntegrationModel, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
     });
@@ -1125,6 +1247,12 @@ extension IntegrationModelQueryProperty
   QueryBuilder<IntegrationModel, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<IntegrationModel, String, QQueryOperations> orbitIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'orbitId');
     });
   }
 

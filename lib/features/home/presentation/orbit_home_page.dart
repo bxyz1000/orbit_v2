@@ -11,7 +11,6 @@ import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../score/score.dart';
 import '../../../shared/providers/data_providers.dart';
 import '../../health/presentation/providers/health_providers.dart';
-import '../../health/presentation/providers/health_sync_provider.dart';
 import 'widgets/score_progress_ring.dart';
 import 'widgets/weekly_score_chart.dart';
 import 'widgets/score_breakdown_bars.dart';

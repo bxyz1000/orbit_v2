@@ -7,7 +7,6 @@ import '../../../../core/theme/orbit_radius.dart';
 import '../../../../shared/widgets/orbit_group_card.dart';
 import '../../../../shared/widgets/orbit_info_tile.dart';
 import '../../../health/presentation/providers/health_providers.dart';
-import '../../../health/presentation/providers/health_sync_provider.dart';
 import '../../../../features/score/presentation/providers/score_providers.dart';
 
 class IntegrationDetailPage extends ConsumerWidget {
@@ -286,23 +285,29 @@ class IntegrationDetailPage extends ConsumerWidget {
         }
         
         if (authorized) {
+          debugPrint('IntegrationDetail: Authorization successful, updating repository...');
           final updated = integration.copyWith(
             status: IntegrationStatus.connected,
             lastSync: DateTime.now(),
           );
           await ref.read(integrationRepositoryProvider).updateIntegration(updated);
+          debugPrint('IntegrationDetail: Integration status updated to Connected');
           
-          // Force refresh health data
+          // Force refresh health data and connection status
           ref.invalidate(healthAuthorizationProvider);
           ref.invalidate(todayHealthSnapshotProvider);
           ref.invalidate(currentDailyScoreProvider);
+          ref.invalidate(integrationsStreamProvider);
+          ref.invalidate(integrationByIdProvider(integration.id));
           
+          debugPrint('IntegrationDetail: Starting initial sync...');
+          ref.invalidate(healthSyncProvider);
           await ref.read(healthSyncProvider.future);
-          debugPrint('IntegrationDetail: Health Connect fully connected and synced');
+          debugPrint('IntegrationDetail: Initial sync completed');
           
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Health Connect connected!')),
+              const SnackBar(content: Text('Health Connect connected and synced!')),
             );
           }
         } else {
