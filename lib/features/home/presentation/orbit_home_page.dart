@@ -27,17 +27,29 @@ class OrbitHomePage extends ConsumerStatefulWidget {
 }
 
 class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindingObserver {
+  Timer? _healthSyncTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _refreshHealth();
+    _startPeriodicHealthSync();
   }
 
   @override
   void dispose() {
+    _healthSyncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _startPeriodicHealthSync() {
+    _healthSyncTimer?.cancel();
+    _healthSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      debugPrint('[HEALTH] OrbitHome: Periodic 30s sync check triggered');
+      ref.read(healthSyncNotifierProvider.notifier).sync();
+    });
   }
 
   @override
@@ -49,10 +61,21 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
 
   Future<void> _refreshHealth() async {
     debugPrint('[HEALTH] OrbitHome: Refreshing health data on resume/init');
-    ref.invalidate(healthSyncProvider);
-    ref.invalidate(todayHealthSnapshotProvider);
-    await ref.read(healthSyncProvider.future);
-    ref.invalidate(dashboardProvider);
+    await ref.read(healthSyncNotifierProvider.notifier).sync();
+  }
+
+  String _formatSyncTime(DateTime? dateTime) {
+    if (dateTime == null) return 'Not synced yet';
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inSeconds < 60) {
+      return 'Synced just now';
+    } else if (diff.inMinutes < 60) {
+      return 'Last synced ${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      return 'Last synced ${diff.inHours}h ago';
+    } else {
+      return 'Last synced ${diff.inDays}d ago';
+    }
   }
 
   @override
@@ -78,9 +101,7 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
       body: dashboardAsync.when(
         data: (state) => RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(healthSyncProvider);
-            ref.invalidate(todayHealthSnapshotProvider);
-            await ref.read(healthSyncProvider.future);
+            await ref.read(healthSyncNotifierProvider.notifier).sync();
             ref.invalidate(dashboardProvider);
             await ref.read(dashboardProvider.future);
           },
@@ -106,7 +127,10 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                   _buildUpcomingEvent(state, context),
                   OrbitSpacing.gapXxl,
                 ],
-                const OrbitSectionHeader(title: "Current Progress"),
+                OrbitSectionHeader(
+                  title: "Current Progress",
+                  subtitle: _formatSyncTime(state.lastSyncedTime),
+                ),
                 OrbitSpacing.gapLg,
                 _buildProgressGrid(state),
                 OrbitSpacing.gapXxl,

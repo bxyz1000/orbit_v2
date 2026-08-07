@@ -258,9 +258,7 @@ class IntegrationDetailPage extends ConsumerWidget {
   void _sync(BuildContext context, WidgetRef ref, Integration integration) async {
     debugPrint('[HEALTH] manual sync started for ${integration.id}');
     if (integration.id == 'health_connect') {
-      ref.invalidate(healthSyncProvider);
-      ref.invalidate(todayHealthSnapshotProvider);
-      await ref.read(healthSyncProvider.future);
+      await ref.read(healthSyncNotifierProvider.notifier).sync();
       ref.invalidate(dashboardProvider);
       debugPrint('[HEALTH] manual sync completed, dashboard provider updated');
       if (context.mounted) {
@@ -305,8 +303,7 @@ class IntegrationDetailPage extends ConsumerWidget {
           ref.invalidate(integrationByIdProvider(integration.id));
           
           debugPrint('[HEALTH] starting initial sync...');
-          ref.invalidate(healthSyncProvider);
-          await ref.read(healthSyncProvider.future);
+          await ref.read(healthSyncNotifierProvider.notifier).sync();
           ref.invalidate(dashboardProvider);
           debugPrint('[HEALTH] initial sync completed, dashboard provider updated');
           

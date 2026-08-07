@@ -25,11 +25,76 @@ final healthAuthorizationProvider = FutureProvider<bool>((ref) async {
   return result;
 });
 
-final healthSyncProvider = FutureProvider<void>((ref) async {
+enum HealthSyncStatus { idle, syncing, success, failed }
+
+class HealthSyncState {
+  final HealthSyncStatus status;
+  final DateTime? lastSyncedAt;
+  final String? errorMessage;
+
+  const HealthSyncState({
+    this.status = HealthSyncStatus.idle,
+    this.lastSyncedAt,
+    this.errorMessage,
+  });
+
+  HealthSyncState copyWith({
+    HealthSyncStatus? status,
+    DateTime? lastSyncedAt,
+    String? errorMessage,
+  }) {
+    return HealthSyncState(
+      status: status ?? this.status,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+class HealthSyncNotifier extends StateNotifier<HealthSyncState> {
+  final HealthRepository _repo;
+  final IHealthService _service;
+
+  HealthSyncNotifier(this._repo, this._service) : super(const HealthSyncState());
+
+  Future<void> sync() async {
+    if (state.status == HealthSyncStatus.syncing) return;
+
+    final isAuthorized = await _service.isAuthorized();
+    if (!isAuthorized) {
+      debugPrint('[HEALTH] Sync skipped - Not authorized');
+      return;
+    }
+
+    state = state.copyWith(status: HealthSyncStatus.syncing, errorMessage: null);
+    try {
+      debugPrint('[HEALTH] sync started');
+      await _repo.syncHealthData(DateTime.now());
+      final now = DateTime.now();
+      state = HealthSyncState(
+        status: HealthSyncStatus.success,
+        lastSyncedAt: now,
+      );
+      debugPrint('[HEALTH] sync completed successfully at $now');
+    } catch (e, stack) {
+      debugPrint('[HEALTH] ERR sync failed: $e');
+      debugPrint('[HEALTH] Stack: $stack');
+      state = state.copyWith(
+        status: HealthSyncStatus.failed,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+}
+
+final healthSyncNotifierProvider = StateNotifierProvider<HealthSyncNotifier, HealthSyncState>((ref) {
   final repo = ref.watch(healthRepoProvider);
-  debugPrint('[HEALTH] sync started');
-  await repo.syncHealthData(DateTime.now());
-  debugPrint('[HEALTH] provider refresh triggered');
+  final service = ref.watch(healthServiceProvider);
+  return HealthSyncNotifier(repo, service);
+});
+
+final healthSyncProvider = FutureProvider<void>((ref) async {
+  await ref.read(healthSyncNotifierProvider.notifier).sync();
 });
 
 final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {

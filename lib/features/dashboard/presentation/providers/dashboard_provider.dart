@@ -26,11 +26,15 @@ final dashboardServiceProvider = Provider<DashboardService>((ref) {
 /// Automatically recalculates and emits updated dashboard state whenever any underlying Isar database collection changes.
 final dashboardProvider = FutureProvider<DashboardState>((ref) async {
   final service = ref.watch(dashboardServiceProvider);
+  final healthSyncState = ref.watch(healthSyncNotifierProvider);
   
   // Watch productivity data changes stream to trigger rebuild on any repository update
   ref.watch(productivityDataChangesProvider);
 
   final state = await service.getDashboardState();
-  debugPrint('[HEALTH] dashboard provider updated: steps=${state.healthSteps}, calories=${state.healthCalories}');
-  return state;
+  final updatedState = state.copyWith(
+    lastSyncedTime: healthSyncState.lastSyncedAt ?? state.lastSyncedTime,
+  );
+  debugPrint('[HEALTH] dashboard provider updated: steps=${updatedState.healthSteps}, calories=${updatedState.healthCalories}, lastSyncedAt=${updatedState.lastSyncedTime}');
+  return updatedState;
 });
