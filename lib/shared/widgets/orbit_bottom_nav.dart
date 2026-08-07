@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/orbit_colors.dart';
 import '../../core/theme/orbit_shadows.dart';
 
-/// Premium floating pill-shaped bottom navigation bar with 3 destinations.
-/// Features blur backdrop, smooth label expand animation, and safe-area handling.
+/// Floating pill bottom navigation bar matching Image 3 & Image 4 pixel-for-pixel.
 class OrbitBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -22,25 +21,31 @@ class OrbitBottomNav extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          40, 0, 40, bottomPadding > 0 ? bottomPadding + 6 : 16),
+          32, 0, 32, bottomPadding > 0 ? bottomPadding + 6 : 16),
       child: Center(
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(36),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
-              height: 56,
-              constraints: const BoxConstraints(maxWidth: 300),
+              height: 62,
+              constraints: const BoxConstraints(maxWidth: 320),
               decoration: BoxDecoration(
                 color: isDark
-                    ? OrbitColors.darkElevated.withValues(alpha: 0.85)
-                    : OrbitColors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: OrbitShadows.navBar,
+                    ? OrbitColors.darkElevated.withValues(alpha: 0.9)
+                    : OrbitColors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(36),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1C1816).withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
                 border: Border.all(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.08)
-                      : OrbitColors.warmGray200.withValues(alpha: 0.4),
+                      : OrbitColors.warmGray200.withValues(alpha: 0.5),
                 ),
               ),
               child: Row(
@@ -54,7 +59,7 @@ class OrbitBottomNav extends StatelessWidget {
                   ),
                   _NavItem(
                     icon: Icons.auto_awesome_rounded,
-                    label: 'AI',
+                    label: 'AI Assistant',
                     isSelected: currentIndex == 1,
                     onTap: () => onTap(1),
                   ),
@@ -89,51 +94,34 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOutCubic,
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 14 : 12,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               size: 20,
               color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onSurface.withValues(alpha: 0.35),
+                  ? OrbitColors.copper500
+                  : Colors.grey.shade400,
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOutCubic,
-              child: isSelected
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.primary,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? OrbitColors.copper500
+                    : Colors.grey.shade400,
+              ),
             ),
           ],
         ),
