@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/dashboard_state.dart';
 import '../../domain/services/dashboard_service.dart';
