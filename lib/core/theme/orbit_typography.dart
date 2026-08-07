@@ -81,4 +81,62 @@ class OrbitTypography {
       ),
     );
   }
+
+  // ─── Semantic Orbit Styles ───
+
+  /// Huge score display: 96pt bold
+  static TextStyle get scoreHero => GoogleFonts.inter(
+    fontSize: 96,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -2,
+    height: 1.0,
+  );
+
+  /// Large metric number (e.g., step count "12,231")
+  static TextStyle get metricLarge => GoogleFonts.inter(
+    fontSize: 48,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1,
+    height: 1.1,
+  );
+
+  /// Medium metric number
+  static TextStyle get metricMedium => GoogleFonts.inter(
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    height: 1.2,
+  );
+
+  /// Small metric number (card values)
+  static TextStyle get metricSmall => GoogleFonts.inter(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: 1.2,
+  );
+
+  /// Section title (uppercase tracking)
+  static TextStyle get sectionLabel => GoogleFonts.inter(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.5,
+    height: 1.4,
+  );
+
+  /// Greeting text
+  static TextStyle get greeting => GoogleFonts.inter(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.4,
+  );
+
+  /// User name in greeting
+  static TextStyle get userName => GoogleFonts.inter(
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    height: 1.2,
+  );
 }

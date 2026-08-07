@@ -15,6 +15,7 @@ import '../../features/score/data/models/personal_record_model.dart';
 import '../../features/score/data/models/achievement_model.dart';
 import '../../features/settings/domain/user_preferences.dart';
 import '../../features/integrations/data/models/integration_model.dart';
+import '../../features/integrations/strava/data/models/strava_activity_model.dart';
 
 class IsarDatabase {
   static late final Isar _isar;
@@ -42,8 +43,10 @@ class IsarDatabase {
         AchievementModelSchema,
         UserPreferencesSchema,
         IntegrationModelSchema,
+        StravaActivityModelSchema,
       ],
       directory: dir.path,
     );
   }
 }
+

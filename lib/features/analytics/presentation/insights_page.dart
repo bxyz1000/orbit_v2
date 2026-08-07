@@ -1,115 +1,114 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../score/score.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../shared/widgets/orbit_section_header.dart';
-import '../../../shared/widgets/orbit_group_card.dart';
-import '../../../shared/widgets/orbit_stat_card.dart';
-import '../../../shared/widgets/orbit_info_tile.dart';
-import 'widgets/monthly_score_chart.dart';
+import 'providers/analytics_providers.dart';
+import 'widgets/analytics_period_selector.dart';
+import 'widgets/score_overview_card.dart';
+import 'widgets/score_trend_chart.dart';
+import 'widgets/task_analytics_section.dart';
+import 'widgets/focus_analytics_section.dart';
+import 'widgets/health_analytics_section.dart';
+import 'widgets/habit_analytics_section.dart';
+import 'widgets/goal_analytics_section.dart';
+import 'widgets/comparison_section.dart';
+import 'widgets/records_section.dart';
+
+import '../../insights/presentation/widgets/category_insights_section.dart';
+import '../../insights/presentation/providers/insight_providers.dart';
 
 class InsightsPage extends ConsumerWidget {
   const InsightsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scoreAsync = ref.watch(currentDailyScoreProvider);
-    final streakAsync = ref.watch(currentStreakProvider);
-    final recordsAsync = ref.watch(personalRecordsProvider);
+    final analyticsAsync = ref.watch(selectedOrbitAnalyticsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('INSIGHTS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+        title: const Text(
+          'ANALYTICS',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
+        ),
       ),
-      body: scoreAsync.when(
-        data: (score) => SingleChildScrollView(
-          padding: const EdgeInsets.all(OrbitSpacing.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildOverview(context, streakAsync, recordsAsync),
-              OrbitSpacing.gapXxl,
-              const OrbitSectionHeader(title: "Monthly Trend"),
-              OrbitSpacing.gapLg,
-              const OrbitGroupCard(
-                padding: EdgeInsets.all(OrbitSpacing.xl),
-                children: [
-                  Text('DAILY ORBIT SCORES (30D)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                  SizedBox(height: 24),
-                  SizedBox(height: 180, child: MonthlyScoreChart()),
-                ],
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: OrbitSpacing.xl, vertical: OrbitSpacing.md),
+            child: AnalyticsPeriodSelector(),
+          ),
+          Expanded(
+            child: analyticsAsync.when(
+              data: (analytics) => RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(categoryInsightsProvider);
+                  ref.invalidate(dailyInsightsProvider);
+                  return ref.refresh(selectedOrbitAnalyticsProvider.future);
+                },
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(OrbitSpacing.xl),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ScoreOverviewCard(scoreAnalytics: analytics.score),
+                      OrbitSpacing.gapXxl,
+                      ScoreTrendChart(points: analytics.score.dailyScores),
+                      OrbitSpacing.gapXxl,
+                      const CategoryInsightsSection(),
+                      OrbitSpacing.gapXxl,
+                      ComparisonSection(analytics: analytics),
+                      OrbitSpacing.gapXxl,
+
+                      TaskAnalyticsSection(taskAnalytics: analytics.tasks),
+                      OrbitSpacing.gapXxl,
+                      FocusAnalyticsSection(focusAnalytics: analytics.focus),
+                      OrbitSpacing.gapXxl,
+                      HealthAnalyticsSection(healthAnalytics: analytics.health),
+                      OrbitSpacing.gapXxl,
+                      HabitAnalyticsSection(habitAnalytics: analytics.habits),
+                      OrbitSpacing.gapXxl,
+                      GoalAnalyticsSection(goalAnalytics: analytics.goals),
+                      OrbitSpacing.gapXxl,
+                      RecordsSection(records: analytics.personalRecords),
+                      const SizedBox(height: OrbitSpacing.huge),
+                    ],
+                  ),
+                ),
               ),
-              OrbitSpacing.gapXxl,
-              const OrbitSectionHeader(title: "Consistency Records"),
-              OrbitSpacing.gapLg,
-              _buildRecords(recordsAsync),
-              OrbitSpacing.gapXxl,
-              const OrbitSectionHeader(title: "Unlocked Milestones"),
-              OrbitSpacing.gapLg,
-              _buildAchievements(ref),
-              const SizedBox(height: OrbitSpacing.huge),
-            ],
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(OrbitSpacing.xxl),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      OrbitSpacing.gapLg,
+                      Text(
+                        'Failed to load analytics',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      OrbitSpacing.gapSm,
+                      Text(
+                        e.toString(),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                      ),
+                      OrbitSpacing.gapLg,
+                      ElevatedButton(
+                        onPressed: () => ref.invalidate(analyticsPeriodProvider),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        ],
       ),
-    );
-  }
-
-  Widget _buildOverview(BuildContext context, AsyncValue<int> streakAsync, AsyncValue<List<PersonalRecord>> recordsAsync) {
-    return Row(
-      children: [
-        Expanded(
-          child: streakAsync.when(
-            data: (streak) => OrbitStatCard(title: 'Active Streak', value: '$streak Days', icon: Icons.local_fire_department),
-            loading: () => const OrbitStatCard(title: 'Streak', value: '...'),
-            error: (_, __) => const OrbitStatCard(title: 'Streak', value: 'Err'),
-          ),
-        ),
-        OrbitSpacing.gapMd,
-        Expanded(
-          child: recordsAsync.when(
-            data: (records) {
-              final best = records.where((r) => r.recordType == 'highest_daily_score').firstOrNull;
-              return OrbitStatCard(title: 'All-Time Best', value: '${best?.value.toInt() ?? 0}', icon: Icons.emoji_events);
-            },
-            loading: () => const OrbitStatCard(title: 'Best', value: '...'),
-            error: (_, __) => const OrbitStatCard(title: 'Best', value: 'Err'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecords(AsyncValue<List<PersonalRecord>> recordsAsync) {
-    return recordsAsync.when(
-      data: (records) => OrbitGroupCard(
-        children: records.map((r) => OrbitInfoTile(
-          icon: Icons.check_circle_outline,
-          title: r.recordType.replaceAll('_', ' ').toUpperCase(),
-          subtitle: 'Value: ${r.value.toInt()}',
-          trailing: Text('${r.achievedAt.day}/${r.achievedAt.month}/${r.achievedAt.year}', style: const TextStyle(fontSize: 10)),
-        )).toList(),
-      ),
-      loading: () => const SizedBox(),
-      error: (_, __) => const SizedBox(),
-    );
-  }
-
-  Widget _buildAchievements(WidgetRef ref) {
-    final achievementsAsync = ref.watch(unlockedAchievementsProvider);
-    return achievementsAsync.when(
-      data: (achievements) => OrbitGroupCard(
-        children: achievements.map((a) => OrbitInfoTile(
-          icon: Icons.stars,
-          title: a.title,
-          subtitle: a.description,
-          trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
-        )).toList(),
-      ),
-      loading: () => const SizedBox(),
-      error: (_, __) => const SizedBox(),
     );
   }
 }

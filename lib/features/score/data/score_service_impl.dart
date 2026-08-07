@@ -17,6 +17,10 @@ import 'repositories/personal_record_repository.dart';
 import 'package:orbit_v2/features/health/domain/calculators/health_score_calculator.dart';
 import 'package:orbit_v2/features/health/domain/entities/health_snapshot.dart';
 
+import 'package:orbit_v2/features/integrations/strava/domain/repositories/i_strava_repository.dart';
+import 'package:orbit_v2/features/score/domain/entities/score_input_model.dart';
+import 'package:orbit_v2/features/score/domain/services/score_engine_v2.dart';
+
 class ScoreServiceImpl implements ScoreService {
   final ScoreRepository _scoreRepository;
   final PersonalRecordRepository _recordRepository;
@@ -26,6 +30,7 @@ class ScoreServiceImpl implements ScoreService {
   final PlannerRepository _plannerRepository;
   final HealthRepository _healthRepository;
   final GoalRepository _goalRepository;
+  final IStravaRepository? _stravaRepository;
 
   ScoreServiceImpl(
     this._scoreRepository,
@@ -35,11 +40,14 @@ class ScoreServiceImpl implements ScoreService {
     this._focusRepository,
     this._plannerRepository,
     this._healthRepository,
-    this._goalRepository,
-  );
+    this._goalRepository, [
+    this._stravaRepository,
+  ]);
+
 
   @override
-  String get scoreVersion => '1.1';
+  String get scoreVersion => '2.0';
+
 
   @override
   Future<DailyScore> calculateActiveScore(DateTime date) async {
@@ -54,10 +62,12 @@ class ScoreServiceImpl implements ScoreService {
     // Check if we should finalize now (it's past 11:55 PM today or it's a previous day)
     if (_isPastFinalizationTime(date)) {
       await finalizeDay(date);
-      return (await _scoreRepository.getDailyScore(startOfDay))!;
+      final finalized = await _scoreRepository.getDailyScore(startOfDay);
+      if (finalized != null) return finalized;
     }
     
     return await _calculateRawScore(date);
+
   }
 
   @override
@@ -74,7 +84,7 @@ class ScoreServiceImpl implements ScoreService {
       final currentDay = weekStart.add(Duration(days: i));
       if (currentDay.isAfter(DateTime.now())) break;
 
-      final score = await calculateActiveScore(currentDay);
+      final score = await _scoreRepository.getDailyScore(currentDay) ?? await _calculateRawScore(currentDay);
       total += score.totalScore;
       tasks += score.taskScore;
       habits += score.habitScore;
@@ -82,6 +92,7 @@ class ScoreServiceImpl implements ScoreService {
       health += (score.stepsScore + score.workoutScore + score.sleepScore);
       daysCount++;
     }
+
 
     final weeklyScore = WeeklyScore(
       weekStartDate: weekStart,
@@ -115,13 +126,14 @@ class ScoreServiceImpl implements ScoreService {
       final currentDay = monthStart.add(Duration(days: i));
       if (currentDay.isAfter(DateTime.now())) break;
 
-      final score = await calculateActiveScore(currentDay);
+      final score = await _scoreRepository.getDailyScore(currentDay) ?? await _calculateRawScore(currentDay);
       total += score.totalScore;
       tasks += score.taskScore;
       habits += score.habitScore;
       focus += score.focusScore;
       health += (score.stepsScore + score.workoutScore + score.sleepScore);
     }
+
 
     final monthlyScore = MonthlyScore(
       monthStartDate: monthStart,
@@ -173,115 +185,96 @@ class ScoreServiceImpl implements ScoreService {
     
     final streak = await _calculateStreak(score.date);
     await _recordRepository.updateIfHigher('longest_streak', streak.toDouble(), score.date);
+
+    if (_stravaRepository != null) {
+      final endOfDay = DateTime(startOfDay.year, startOfDay.month, startOfDay.day, 23, 59, 59, 999);
+      final stravaActivities = await _stravaRepository!.getActivitiesForDateRange(startOfDay, endOfDay);
+      for (final sa in stravaActivities) {
+        await _recordRepository.updateIfHigher('longest_strava_distance', sa.distanceKm, sa.startDate);
+        await _recordRepository.updateIfHigher('highest_strava_elevation', sa.elevationGainMeters, sa.startDate);
+        await _recordRepository.updateIfHigher('longest_strava_workout', sa.durationMinutes.toDouble(), sa.startDate);
+      }
+    }
     
     await calculateWeeklyScore(date);
     await calculateMonthlyScore(date);
   }
 
+
   Future<DailyScore> _calculateRawScore(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
     
-    // 1. Task Score
+    // 1. Task & Execution Inputs
     final tasks = await _taskRepository.getAllTasks();
     final completedTasks = tasks.where((t) => 
-        t.completed && t.completedAt != null && _isSameDay(t.completedAt!, startOfDay)).length;
-    final taskScore = completedTasks * 10;
+        t.completed && t.completedAt != null && _isSameDay(t.completedAt!, startOfDay)).toList();
+    final overdueTaskCount = tasks.where((t) => !t.completed && t.dueDate != null && t.dueDate!.isBefore(startOfDay)).length;
+    final plannerEvents = await _plannerRepository.getAllEvents();
+    final completedPlannerEvents = plannerEvents.where((e) => e.isCompleted && _isSameDay(e.date, startOfDay)).toList();
 
-    // 2. Habit Score
+    // 2. Habit Inputs
+    final allHabits = await _habitRepository.getAllHabits();
     final completions = await _habitRepository.getCompletionsForDate(startOfDay);
-    final habitScore = completions.length * 15;
 
-    // 3. Focus Score
+    // 3. Focus Inputs
     final focusSessions = await _focusRepository.getAllSessions();
     final todaySessions = focusSessions.where((s) => s.completed && _isSameDay(s.startedAt, startOfDay));
     final focusMinutes = todaySessions.fold<int>(0, (sum, s) => sum + s.duration);
-    
-    const maxDailyFocus = 120;
-    double focusPoints = (min(focusMinutes, maxDailyFocus) / 25) * 20;
-    if (focusMinutes > maxDailyFocus) {
-      focusPoints += ((focusMinutes - maxDailyFocus) / 25) * 20 * 0.5;
-    }
-    final focusScore = focusPoints.round();
 
-    // 4. Health Score
+    // 4. Health Inputs
     final stepLog = await _healthRepository.getStepsForDate(startOfDay);
     final sleepLog = await _healthRepository.getSleepForDate(startOfDay);
     final workoutLogs = await _healthRepository.getWorkoutsForDate(startOfDay);
-    final workoutMinutes = workoutLogs.fold<int>(0, (sum, w) => sum + w.durationMinutes);
 
-    final healthSnapshot = HealthSnapshot(
-      steps: stepLog?.count ?? 0,
-      calories: stepLog?.calories ?? 0,
-      distance: stepLog?.distance ?? 0,
-      activeMinutes: stepLog?.activeMinutes ?? 0, 
-      sleepMinutes: sleepLog?.durationMinutes ?? 0,
-      workoutMinutes: workoutMinutes,
-      timestamp: DateTime.now(),
-    );
-
-    final healthScore = HealthScoreCalculator.calculateScore(healthSnapshot);
-    
-    // Detailed breakdown for DailyScore
-    final stepsPoints = (healthSnapshot.steps >= 10000) ? 15 : (healthSnapshot.steps >= 5000 ? 8 : 0);
-    final workoutPoints = (healthSnapshot.workoutMinutes >= 30) ? 20 : (healthSnapshot.workoutMinutes >= 15 ? 10 : 0);
-    const sleepGoalMins = 8 * 60;
-    final sleepDiff = (healthSnapshot.sleepMinutes - sleepGoalMins).abs();
-    final sleepPoints = healthSnapshot.sleepMinutes > 0 ? (sleepDiff <= 60 ? 15 : (sleepDiff <= 120 ? 8 : 0)) : 0;
-
-    // 5. Planner Score
-    final plannerEvents = await _plannerRepository.getAllEvents();
-    final completedEvents = plannerEvents.where((e) => e.isCompleted && _isSameDay(e.date, startOfDay)).length;
-    final plannerScore = completedEvents * 10;
-
-    // 6. Goal Score
-    final goals = await _goalRepository.getGoalsForDate(startOfDay);
-    final completedGoals = goals.where((g) => g.completed && !g.isLongTerm).length;
-    final goalScore = completedGoals * 100;
-
-    // 7. Penalties
-    final overdueTasks = tasks.where((t) => !t.completed && t.dueDate != null && t.dueDate!.isBefore(startOfDay)).length;
-    final penaltyScore = min(20, overdueTasks * 2);
-
-    // 8. Consistency Multiplier
-    final streak = await _calculateStreak(startOfDay);
-    double multiplier = 1.0;
-    if (streak >= 100) multiplier = 1.5;
-    else if (streak >= 30) multiplier = 1.2;
-    else if (streak >= 7) multiplier = 1.1;
-
-    // 9. Bonuses
-    int bonusScore = 0;
-    final yesterdayScore = await _scoreRepository.getDailyScore(startOfDay.subtract(const Duration(days: 1)));
-    if (yesterdayScore != null && yesterdayScore.isFinalized) {
-      int currentSubtotal = taskScore + habitScore + focusScore + healthScore + plannerScore + goalScore - penaltyScore;
-      if (currentSubtotal > yesterdayScore.totalScore) bonusScore += 25;
+    int workoutMinutes = 0;
+    if (_stravaRepository != null) {
+      final endOfDay = DateTime(startOfDay.year, startOfDay.month, startOfDay.day, 23, 59, 59, 999);
+      final stravaActivities = await _stravaRepository!.getActivitiesForDateRange(startOfDay, endOfDay);
+      for (final w in workoutLogs) {
+        final isDuplicate = stravaActivities.any((sa) =>
+            sa.startDate.difference(w.date).abs() <= const Duration(minutes: 15) &&
+            (sa.durationMinutes - w.durationMinutes).abs() <= 15);
+        if (!isDuplicate) {
+          workoutMinutes += w.durationMinutes;
+        }
+      }
+      for (final sa in stravaActivities) {
+        workoutMinutes += sa.durationMinutes;
+      }
+    } else {
+      workoutMinutes = workoutLogs.fold<int>(0, (sum, w) => sum + w.durationMinutes);
     }
 
-    if (streak == 7) bonusScore += 100;
-    if (streak == 30) bonusScore += 500;
-    if (streak == 100) bonusScore += 2000;
+    // 5. Goals & Integrations
+    final goals = await _goalRepository.getGoalsForDate(startOfDay);
+    final completedGoalsCount = goals.where((g) => g.completed && !g.isLongTerm).length;
+    final isAuthorizedHealth = await _healthRepository.isAuthorized();
+    final isHealthConnected = isAuthorizedHealth || stepLog != null || workoutLogs.isNotEmpty || sleepLog != null;
+    final isStravaConnected = _stravaRepository != null;
 
-    bool isBalanced = completedTasks >= 3 && completions.isNotEmpty && focusMinutes >= 25 && stepsPoints >= 8;
-    if (isBalanced) bonusScore += 75;
 
-    int totalScore = (((taskScore + habitScore + focusScore + healthScore + plannerScore + goalScore + bonusScore - penaltyScore) * multiplier)).round();
-    totalScore = max(0, totalScore);
+    // 6. Historical Scores for 7-day EMA
+    final historicalDailyScores = await _scoreRepository.getRecentDailyScores(startOfDay, limit: 14);
 
-    return DailyScore.create(
+    final input = ScoreInputModel(
       date: startOfDay,
-      totalScore: totalScore,
-      taskScore: taskScore,
-      habitScore: habitScore,
-      focusScore: focusScore,
-      stepsScore: stepsPoints,
-      workoutScore: workoutPoints,
-      sleepScore: sleepPoints,
-      goalScore: goalScore,
-      consistencyScore: (totalScore * (multiplier - 1.0)).round(),
-      bonusScore: bonusScore,
-      penaltyScore: penaltyScore,
-      scoreVersion: scoreVersion,
+      completedTasks: completedTasks,
+      overdueTaskCount: overdueTaskCount,
+      completedPlannerEvents: completedPlannerEvents,
+      activeHabitsCount: max(1, allHabits.length),
+      completedHabitsCount: completions.length,
+      focusMinutes: focusMinutes,
+      steps: stepLog?.count ?? 0,
+      workoutMinutes: workoutMinutes,
+      sleepMinutes: sleepLog?.durationMinutes ?? 0,
+      completedGoalsCount: completedGoalsCount,
+      isHealthConnected: isHealthConnected,
+      isStravaConnected: isStravaConnected,
+      historicalDailyScores: historicalDailyScores,
     );
+
+    final result = ScoreEngineV2.calculate(input);
+    return result.score;
   }
 
   @override

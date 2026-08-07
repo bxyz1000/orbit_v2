@@ -6,6 +6,7 @@ import '../../data/dashboard_service_impl.dart';
 import '../../../../shared/providers/repository_providers.dart';
 import '../../../health/presentation/providers/health_providers.dart';
 import '../../../score/presentation/providers/score_providers.dart';
+import '../../../integrations/strava/presentation/providers/strava_providers.dart';
 
 /// Provider for [DashboardService].
 final dashboardServiceProvider = Provider<DashboardService>((ref) {
@@ -18,9 +19,12 @@ final dashboardServiceProvider = Provider<DashboardService>((ref) {
     goalRepository: ref.watch(goalRepositoryProvider),
     personalRecordRepository: ref.watch(personalRecordRepositoryProvider),
     achievementRepository: ref.watch(achievementRepositoryProvider),
+    habitRepository: ref.watch(habitRepositoryProvider),
     scoreService: ref.watch(scoreServiceProvider),
+    stravaRepository: ref.watch(stravaRepositoryProvider),
   );
 });
+
 
 /// Reactive provider for [DashboardState].
 /// Automatically recalculates and emits updated dashboard state whenever any underlying Isar database collection changes.

@@ -6,6 +6,7 @@ import '../../data/score_service_impl.dart';
 import '../../data/motivation_service_impl.dart';
 import '../../../../shared/providers/repository_providers.dart';
 import '../../../health/presentation/providers/health_providers.dart';
+import '../../../integrations/strava/presentation/providers/strava_providers.dart';
 import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
 import 'package:orbit_v2/features/score/domain/entities/weekly_score.dart';
 import 'package:orbit_v2/features/score/domain/entities/monthly_score.dart';
@@ -23,8 +24,10 @@ final scoreServiceProvider = Provider<ScoreService>((ref) {
     ref.watch(plannerRepositoryProvider),
     ref.watch(healthRepoProvider),
     ref.watch(goalRepositoryProvider),
+    ref.watch(stravaRepositoryProvider),
   );
 });
+
 
 /// Provider for the [MotivationService].
 final motivationServiceProvider = Provider<MotivationService>((ref) {
@@ -53,6 +56,7 @@ final productivityDataChangesProvider = StreamProvider<void>((ref) {
   final plannerRepo = ref.watch(plannerRepositoryProvider);
   final healthRepo = ref.watch(healthRepoProvider);
   final goalRepo = ref.watch(goalRepositoryProvider);
+  final stravaRepo = ref.watch(stravaRepositoryProvider);
 
   final controller = StreamController<void>();
 
@@ -66,7 +70,9 @@ final productivityDataChangesProvider = StreamProvider<void>((ref) {
     healthRepo.watchWorkouts(),
     healthRepo.watchSleep(),
     goalRepo.watchGoals(),
+    stravaRepo.watchActivities(),
   ];
+
 
   final subscriptions = streams.map((stream) {
     return stream.listen((_) {

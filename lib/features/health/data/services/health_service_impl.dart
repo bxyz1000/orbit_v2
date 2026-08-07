@@ -98,16 +98,9 @@ class HealthServiceImpl implements IHealthService {
       } catch (e, stack) {
         debugPrint('[HEALTH] ERR getHealthDataFromTypes failed: $e');
         debugPrint('[HEALTH] Stack: $stack');
-        return HealthSnapshot(
-          steps: steps,
-          calories: 0,
-          distance: 0,
-          activeMinutes: 0,
-          sleepMinutes: 0,
-          workoutMinutes: 0,
-          timestamp: now,
-        );
+        rethrow;
       }
+
       
       debugPrint('[HEALTH] health records returned: ${data.length}');
 

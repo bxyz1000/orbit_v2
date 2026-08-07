@@ -35,6 +35,14 @@ dependencies:
   health: ^11.0.0
   permission_handler: ^11.3.1
 
+  # Network & Secure Storage
+  http: ^1.2.0
+  flutter_secure_storage: ^9.0.0
+
+  # Deep Linking & Browser
+  url_launcher: ^6.3.0
+  app_links: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

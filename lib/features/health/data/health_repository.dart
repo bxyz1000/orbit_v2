@@ -9,6 +9,11 @@ class HealthRepository {
 
   HealthRepository(this._isar, [this._healthService]);
 
+  Future<bool> isAuthorized() async {
+    return await _healthService?.isAuthorized() ?? false;
+  }
+
+
   Future<StepLog?> getStepsForDate(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
     return await _isar.stepLogs.filter().dateEqualTo(startOfDay).findFirst();

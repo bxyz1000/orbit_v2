@@ -36,3 +36,10 @@ final completedHabitsTodayCountProvider = FutureProvider<int>((ref) async {
   final completions = await repo.getCompletionsForDate(DateTime.now());
   return completions.length;
 });
+
+final allNotesCountProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(noteRepositoryProvider);
+  ref.watch(productivityDataChangesProvider);
+  final notes = await repo.getAllNotes();
+  return notes.length;
+});

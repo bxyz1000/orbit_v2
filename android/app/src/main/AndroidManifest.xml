@@ -26,6 +26,14 @@
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
+
+            <!-- Strava OAuth Redirect -->
+            <intent-filter android:label="Strava Auth">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="orbit" android:host="strava-auth" />
+            </intent-filter>
         </activity>
 
         <activity-alias

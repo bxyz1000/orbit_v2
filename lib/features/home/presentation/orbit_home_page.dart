@@ -16,6 +16,9 @@ import '../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../dashboard/domain/entities/dashboard_state.dart';
 import '../../integrations/presentation/providers/integration_providers.dart';
 import '../../integrations/domain/entities/integration.dart';
+import '../../insights/presentation/widgets/todays_insights_section.dart';
+import '../../insights/presentation/providers/insight_providers.dart';
+
 
 class OrbitHomePage extends ConsumerStatefulWidget {
   final VoidCallback onProfileTap;
@@ -102,6 +105,8 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
         data: (state) => RefreshIndicator(
           onRefresh: () async {
             await ref.read(healthSyncNotifierProvider.notifier).sync();
+            ref.invalidate(dailyInsightsProvider);
+            ref.invalidate(categoryInsightsProvider);
             ref.invalidate(dashboardProvider);
             await ref.read(dashboardProvider.future);
           },
@@ -115,10 +120,13 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
                 OrbitSpacing.gapXxl,
                 _buildNextBestAction(context, state),
                 OrbitSpacing.gapXxl,
+                const TodaysInsightsSection(),
+                OrbitSpacing.gapXxl,
                 if (healthAuthorized.asData?.value == false) ...[
                   _buildHealthConnectBanner(context, ref),
                   OrbitSpacing.gapXxl,
                 ],
+
                 const OrbitSectionHeader(title: "Today's Timeline"),
                 OrbitSpacing.gapLg,
                 _buildTimeline(context, state),

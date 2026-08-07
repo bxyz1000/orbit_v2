@@ -7,7 +7,7 @@ import '../../../../core/theme/orbit_radius.dart';
 import '../../../../shared/widgets/orbit_group_card.dart';
 import '../../../../shared/widgets/orbit_info_tile.dart';
 import '../../../health/presentation/providers/health_providers.dart';
-import '../../../../features/score/presentation/providers/score_providers.dart';
+import '../../strava/presentation/providers/strava_providers.dart';
 import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 
 class IntegrationDetailPage extends ConsumerWidget {
@@ -137,26 +137,42 @@ class IntegrationDetailPage extends ConsumerWidget {
         break;
     }
 
-    return OrbitGroupCard(
-      padding: const EdgeInsets.all(OrbitSpacing.lg),
+    final errorMessage = integration.metadata['errorMessage'] as String?;
+
+    return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        OrbitGroupCard(
+          padding: const EdgeInsets.all(OrbitSpacing.lg),
           children: [
-            Text('Connection Status', style: theme.textTheme.titleMedium),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: OrbitRadius.brCircular,
-              ),
-              child: Text(
-                statusText,
-                style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Connection Status', style: theme.textTheme.titleMedium),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: OrbitRadius.brCircular,
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+        if (errorMessage != null) ...[
+          OrbitSpacing.gapMd,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              errorMessage,
+              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -181,17 +197,27 @@ class IntegrationDetailPage extends ConsumerWidget {
   }
 
   Widget _buildStravaDetails(ThemeData theme, ColorScheme colorScheme, Integration integration) {
+    final metadata = integration.metadata;
+    final athleteName = metadata['athleteName'] as String? ?? 'Not provided';
+    final activityCount = (metadata['activityCount'] as num?)?.toInt() ?? 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Account Info', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+        Text('Strava Account', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
         OrbitSpacing.gapSm,
         OrbitGroupCard(
           children: [
             OrbitInfoTile(
               title: 'Athlete', 
-              trailing: Text(integration.metadata['athleteName'] ?? 'Bhavik', style: const TextStyle(fontWeight: FontWeight.bold)),
+              trailing: Text(athleteName, style: const TextStyle(fontWeight: FontWeight.bold)),
               leading: const Icon(Icons.person_outline, size: 20),
+            ),
+            const Divider(height: 1, indent: 56),
+            OrbitInfoTile(
+              title: 'Activities Synced', 
+              trailing: Text('$activityCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+              leading: const Icon(Icons.history, size: 20),
             ),
           ],
         ),
@@ -201,16 +227,19 @@ class IntegrationDetailPage extends ConsumerWidget {
 
   Widget _buildActions(BuildContext context, WidgetRef ref, ThemeData theme, ColorScheme colorScheme, Integration integration) {
     final isConnected = integration.status == IntegrationStatus.connected;
+    final isSyncing = integration.status == IntegrationStatus.syncing;
 
     return Column(
       children: [
-        if (isConnected) ...[
+        if (isConnected || isSyncing) ...[
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _sync(context, ref, integration),
-              icon: const Icon(Icons.sync),
-              label: const Text('Sync Now'),
+              onPressed: isSyncing ? null : () => _sync(context, ref, integration),
+              icon: isSyncing 
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.sync),
+              label: Text(isSyncing ? 'Syncing...' : 'Sync Now'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 backgroundColor: colorScheme.primary,
@@ -222,7 +251,7 @@ class IntegrationDetailPage extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {
+              onPressed: isSyncing ? null : () {
                 _showDisconnectDialog(context, ref, integration);
               },
               icon: const Icon(Icons.link_off),
@@ -242,11 +271,11 @@ class IntegrationDetailPage extends ConsumerWidget {
                  _connect(context, ref, integration);
               },
               icon: const Icon(Icons.link),
-              label: const Text('Connect Now'),
+              label: const Text('Connect Strava'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
+                backgroundColor: const Color(0xFFFC6100), // Strava Orange
+                foregroundColor: Colors.white,
               ),
             ),
           ),
@@ -256,81 +285,80 @@ class IntegrationDetailPage extends ConsumerWidget {
   }
 
   void _sync(BuildContext context, WidgetRef ref, Integration integration) async {
-    debugPrint('[HEALTH] manual sync started for ${integration.id}');
+    debugPrint('[INTEGRATION] manual sync started for ${integration.id}');
     if (integration.id == 'health_connect') {
       await ref.read(healthSyncNotifierProvider.notifier).sync();
       ref.invalidate(dashboardProvider);
-      debugPrint('[HEALTH] manual sync completed, dashboard provider updated');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sync completed!')),
-        );
+    } else if (integration.id == 'strava') {
+      try {
+        final count = await ref.read(stravaSyncNotifierProvider.notifier).sync();
+        ref.invalidate(dashboardProvider);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sync complete! Found $count new activities.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
 
   void _connect(BuildContext context, WidgetRef ref, Integration integration) async {
-    debugPrint('[HEALTH] connect started for ${integration.id}');
+    debugPrint('[INTEGRATION] connect started for ${integration.id}');
     
     if (integration.id == 'health_connect') {
       try {
         final healthService = ref.read(healthServiceProvider);
-        
-        // 1. Check if already authorized
         bool authorized = await healthService.isAuthorized();
-        debugPrint('[HEALTH] hasPermissions result: $authorized');
-        
         if (!authorized) {
-          debugPrint('[HEALTH] requestAuthorization started');
           authorized = await healthService.requestAuthorization();
-          debugPrint('[HEALTH] requestAuthorization result: $authorized');
         }
         
         if (authorized) {
-          debugPrint('[HEALTH] updating integration status in repository...');
           final updated = integration.copyWith(
             status: IntegrationStatus.connected,
             lastSync: DateTime.now(),
           );
           await ref.read(integrationRepositoryProvider).updateIntegration(updated);
-          debugPrint('[HEALTH] integration status persisted: connected');
           
-          // Force refresh health data and connection status
           ref.invalidate(healthAuthorizationProvider);
           ref.invalidate(todayHealthSnapshotProvider);
-          ref.invalidate(currentDailyScoreProvider);
           ref.invalidate(integrationsStreamProvider);
           ref.invalidate(integrationByIdProvider(integration.id));
           
-          debugPrint('[HEALTH] starting initial sync...');
           await ref.read(healthSyncNotifierProvider.notifier).sync();
           ref.invalidate(dashboardProvider);
-          debugPrint('[HEALTH] initial sync completed, dashboard provider updated');
           
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Health Connect connected and synced!')),
             );
           }
-        } else {
-          debugPrint('[HEALTH] authorization failed or denied');
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Authorization failed or denied.')),
-            );
-          }
         }
-      } catch (e, stack) {
-        debugPrint('[HEALTH] ERR Exception during connection: $e');
-        debugPrint('[HEALTH] Stack: $stack');
-        if (context.mounted) {
+      } catch (e) {
+         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
+    } else if (integration.id == 'strava') {
+      try {
+        await ref.read(stravaAuthNotifierProvider.notifier).connect();
+      } catch (e) {
+        debugPrint('[STRAVA] ERR Exception during connection: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open Strava: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     } else {
-      // Logic for other integrations
       final updated = integration.copyWith(
         status: IntegrationStatus.connected,
         lastSync: DateTime.now(),
@@ -343,7 +371,7 @@ class IntegrationDetailPage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Disconnect Integration?'),
+        title: Text('Disconnect ${integration.name}?'),
         content: Text('Are you sure you want to disconnect ${integration.name}? Orbit will stop receiving new data from this source.'),
         actions: [
           TextButton(
@@ -352,8 +380,12 @@ class IntegrationDetailPage extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () async {
-              final updated = integration.copyWith(status: IntegrationStatus.notConnected);
-              await ref.read(integrationRepositoryProvider).updateIntegration(updated);
+              if (integration.id == 'strava') {
+                await ref.read(stravaSyncNotifierProvider.notifier).disconnect();
+              } else {
+                final updated = integration.copyWith(status: IntegrationStatus.notConnected);
+                await ref.read(integrationRepositoryProvider).updateIntegration(updated);
+              }
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Disconnect', style: TextStyle(color: Colors.red)),

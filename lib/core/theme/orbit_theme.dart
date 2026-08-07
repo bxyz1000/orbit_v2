@@ -8,9 +8,11 @@ class OrbitAnimations {
   static const Duration fast = Duration(milliseconds: 200);
   static const Duration medium = Duration(milliseconds: 400);
   static const Duration slow = Duration(milliseconds: 600);
+  static const Duration hero = Duration(milliseconds: 1200);
 
   static const Curve curve = Curves.easeInOutCubic;
   static const Curve emphasizedCurve = Cubic(0.2, 0, 0, 1);
+  static const Curve scoreCurve = Curves.easeOutCubic;
 }
 
 class OrbitTheme {
@@ -19,9 +21,9 @@ class OrbitTheme {
       useMaterial3: true,
       colorScheme: OrbitColors.lightColorScheme,
       textTheme: OrbitTypography.textTheme,
-      scaffoldBackgroundColor: OrbitColors.white,
+      scaffoldBackgroundColor: OrbitColors.warmWhite,
       appBarTheme: const AppBarTheme(
-        backgroundColor: OrbitColors.white,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
@@ -30,25 +32,30 @@ class OrbitTheme {
         color: OrbitColors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: OrbitRadius.brMd,
-          side: const BorderSide(color: OrbitColors.gray200, width: 1),
+          borderRadius: OrbitRadius.brLg,
         ),
+        margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: OrbitColors.gray50,
+        fillColor: OrbitColors.warmGray50,
         border: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
-          borderSide: BorderSide(color: OrbitColors.gray200),
+          borderSide: const BorderSide(color: OrbitColors.warmGray200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
-          borderSide: BorderSide(color: OrbitColors.gray200),
+          borderSide: const BorderSide(color: OrbitColors.warmGray200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
-          borderSide: BorderSide(color: OrbitColors.blue500, width: 2),
+          borderSide: const BorderSide(color: OrbitColors.copper500, width: 2),
         ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: OrbitColors.warmGray100,
+        thickness: 1,
+        space: 1,
       ),
       extensions: [
         OrbitSpacingExtension.light,
@@ -67,7 +74,7 @@ class OrbitTheme {
       ),
       scaffoldBackgroundColor: OrbitColors.darkBackground,
       appBarTheme: const AppBarTheme(
-        backgroundColor: OrbitColors.darkBackground,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
@@ -76,9 +83,9 @@ class OrbitTheme {
         color: OrbitColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: OrbitRadius.brMd,
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
+          borderRadius: OrbitRadius.brLg,
         ),
+        margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -91,10 +98,15 @@ class OrbitTheme {
           borderRadius: OrbitRadius.brMd,
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        focusedBorder: OutlineInputBorder(
+        focusedBorder: const OutlineInputBorder(
           borderRadius: OrbitRadius.brMd,
-          borderSide: const BorderSide(color: OrbitColors.blue500, width: 2),
+          borderSide: BorderSide(color: OrbitColors.copper400, width: 2),
         ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: Colors.white.withValues(alpha: 0.08),
+        thickness: 1,
+        space: 1,
       ),
       extensions: [
         OrbitSpacingExtension.dark,

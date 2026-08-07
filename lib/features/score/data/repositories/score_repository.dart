@@ -69,4 +69,17 @@ class ScoreRepository {
 
   /// Watches for any changes in the daily scores collection.
   Stream<void> watchAllScores() => _isar.dailyScoreModels.watchLazy();
+
+  /// Retrieves recent daily scores before a given date.
+  Future<List<DailyScore>> getRecentDailyScores(DateTime beforeDate, {int limit = 14}) async {
+    final startOfDay = DateTime(beforeDate.year, beforeDate.month, beforeDate.day);
+    final models = await _isar.dailyScoreModels
+        .filter()
+        .dateLessThan(startOfDay)
+        .sortByDateDesc()
+        .limit(limit)
+        .findAll();
+    return models.map((m) => m.toEntity()).toList();
+  }
 }
+

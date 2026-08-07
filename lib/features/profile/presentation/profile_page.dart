@@ -1,154 +1,264 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../core/theme/orbit_radius.dart';
+import '../../../core/theme/orbit_shadows.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
-import '../../../shared/widgets/orbit_stat_card.dart';
-import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
+import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../settings/presentation/providers/preferences_providers.dart';
 import '../../score/presentation/providers/score_providers.dart';
+import '../../health/presentation/providers/health_providers.dart';
+import '../../integrations/strava/presentation/providers/strava_providers.dart';
+import '../../integrations/strava/domain/entities/strava_auth_state.dart';
 
+/// Combined Profile + Settings destination.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the future provider for the initial load
     final prefsAsync = ref.watch(userPreferencesProvider);
-    
-    // Also watch the stream provider for real-time updates if they happen
-    ref.listen(userPreferencesStreamProvider, (previous, next) {
-      if (next is AsyncData) {
-        ref.invalidate(userPreferencesProvider);
-      }
-    });
-
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
+    final scoreAsync = ref.watch(currentDailyScoreProvider);
+    final streakAsync = ref.watch(currentStreakProvider);
+    final recordsAsync = ref.watch(personalRecordsProvider);
+    final healthAuthAsync = ref.watch(healthAuthorizationProvider);
+    final stravaStateAsync = ref.watch(stravaAuthStateStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Profile & Settings'),
+        centerTitle: true,
       ),
       body: prefsAsync.when(
         data: (prefs) => SingleChildScrollView(
-          padding: const EdgeInsets.all(OrbitSpacing.xl),
+          padding: const EdgeInsets.all(OrbitSpacing.pagePadding),
           child: Column(
             children: [
-              _buildHeader(textTheme, colorScheme, prefs),
-              OrbitSpacing.gapXxl,
-              _buildQuickStats(ref),
-              OrbitSpacing.gapXxl,
-              _buildThemeSelection(textTheme, colorScheme, ref, prefs),
-              OrbitSpacing.gapXxl,
-              _buildPreferences(textTheme, colorScheme, ref, prefs),
-              OrbitSpacing.gapXxl,
-              _buildAbout(colorScheme),
-              OrbitSpacing.gapXxl,
-              _buildBottomButton(),
-              OrbitSpacing.gapXxl,
+              // ─── Profile Header ───
+              _buildProfileHeader(context, prefs),
+              OrbitSpacing.vGapXxl,
+
+              // ─── Score & Streak Cards ───
+              _buildStatsRow(context, scoreAsync, streakAsync),
+              OrbitSpacing.vGapXxl,
+
+              // ─── Personal Records ───
+              _buildPersonalRecords(context, recordsAsync),
+              OrbitSpacing.vGapXxl,
+
+              // ─── Appearance ───
+              _buildAppearanceSection(context, ref, prefs),
+              OrbitSpacing.vGapXxl,
+
+              // ─── Integrations ───
+              _buildIntegrationsSection(context, ref, healthAuthAsync, stravaStateAsync),
+              OrbitSpacing.vGapXxl,
+
+              // ─── Preferences ───
+              _buildPreferencesSection(context, ref, prefs),
+              OrbitSpacing.vGapXxl,
+
+              // ─── About Orbit ───
+              _buildAboutSection(context),
+              OrbitSpacing.vGapXxxl,
             ],
           ),
         ),
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(48.0),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              OrbitSpacing.gapMd,
-              Text('Error loading profile: $e'),
-              TextButton(
-                onPressed: () => ref.invalidate(userPreferencesProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error loading profile: $e')),
       ),
     );
   }
 
-  Widget _buildHeader(TextTheme textTheme, ColorScheme colorScheme, dynamic prefs) {
+  Widget _buildProfileHeader(BuildContext context, dynamic prefs) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: colorScheme.primaryContainer,
-          child: Icon(
-            Icons.person,
-            size: 50,
-            color: colorScheme.onPrimaryContainer,
-          ),
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 46,
+              backgroundColor: colorScheme.primaryContainer,
+              child: Icon(
+                Icons.person_rounded,
+                size: 46,
+                color: colorScheme.onPrimaryContainer,
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: OrbitColors.copper500,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  size: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
         ),
-        OrbitSpacing.gapMd,
+        OrbitSpacing.vGapMd,
         Text(
           prefs.userName,
-          style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
         ),
+        OrbitSpacing.vGapXs,
         Text(
           prefs.userTagline,
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurface.withOpacity(0.6),
-          ),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
         ),
       ],
     );
   }
 
-  Widget _buildQuickStats(WidgetRef ref) {
-    final scoreAsync = ref.watch(currentDailyScoreProvider);
-    final streakAsync = ref.watch(currentStreakProvider);
-    final sessionsAsync = ref.watch(todaySessionsProvider);
+  Widget _buildStatsRow(
+    BuildContext context,
+    AsyncValue scoreAsync,
+    AsyncValue<int> streakAsync,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final scoreVal = scoreAsync.asData?.value.totalScore ?? 0;
+    final streakVal = streakAsync.asData?.value ?? 0;
 
     return Row(
       children: [
         Expanded(
-          child: scoreAsync.when(
-            data: (score) => OrbitStatCard(title: 'Daily Score', value: '${score.totalScore}'),
-            loading: () => const OrbitStatCard(title: 'Daily Score', value: '...'),
-            error: (_, __) => const OrbitStatCard(title: 'Daily Score', value: 'Err'),
+          child: Container(
+            padding: const EdgeInsets.all(OrbitSpacing.lg),
+            decoration: BoxDecoration(
+              color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: OrbitShadows.card,
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '$scoreVal',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.primary,
+                      ),
+                ),
+                OrbitSpacing.vGapXs,
+                Text(
+                  'Orbit Score',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                ),
+              ],
+            ),
           ),
         ),
-        OrbitSpacing.gapMd,
+        const SizedBox(width: 12),
         Expanded(
-          child: streakAsync.when(
-            data: (streak) => OrbitStatCard(title: 'Streak', value: '$streak Days'),
-            loading: () => const OrbitStatCard(title: 'Streak', value: '...'),
-            error: (_, __) => const OrbitStatCard(title: 'Streak', value: 'Err'),
-          ),
-        ),
-        OrbitSpacing.gapMd,
-        Expanded(
-          child: sessionsAsync.when(
-            data: (sessions) {
-              final totalMinutes = sessions.fold<int>(0, (sum, s) => sum + s.duration);
-              final hours = totalMinutes / 60;
-              return OrbitStatCard(title: 'Focus Hours', value: '${hours.toStringAsFixed(1)}h');
-            },
-            loading: () => const OrbitStatCard(title: 'Focus Hours', value: '...'),
-            error: (_, __) => const OrbitStatCard(title: 'Focus Hours', value: 'Err'),
+          child: Container(
+            padding: const EdgeInsets.all(OrbitSpacing.lg),
+            decoration: BoxDecoration(
+              color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: OrbitShadows.card,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$streakVal',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: OrbitColors.copper500,
+                          ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text('🔥', style: TextStyle(fontSize: 20)),
+                  ],
+                ),
+                OrbitSpacing.vGapXs,
+                Text(
+                  'Day Streak',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildThemeSelection(TextTheme textTheme, ColorScheme colorScheme, WidgetRef ref, dynamic prefs) {
+  Widget _buildPersonalRecords(BuildContext context, AsyncValue recordsAsync) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const OrbitSectionHeader(title: 'Personal Records'),
+        OrbitSpacing.vGapMd,
+        recordsAsync.when(
+          data: (records) {
+            if (records.isEmpty) {
+              return const OrbitGroupCard(
+                children: [
+                  OrbitInfoTile(
+                    icon: Icons.emoji_events_outlined,
+                    title: 'No personal records yet',
+                    subtitle: 'Keep using Orbit to set new records!',
+                  ),
+                ],
+              );
+            }
+            return OrbitGroupCard(
+              children: (records as List).take(3).map<Widget>((r) {
+                return OrbitInfoTile(
+                  icon: Icons.emoji_events_rounded,
+                  title: r.recordType.replaceAll('_', ' ').toUpperCase(),
+                  subtitle: 'Achieved on ${_formatDate(r.achievedAt)}',
+                  trailing: Text(
+                    '${r.value.toInt()}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: OrbitColors.success,
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppearanceSection(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic prefs,
+  ) {
     final currentMode = ref.watch(appThemeModeProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'Appearance'),
-        OrbitSpacing.gapMd,
+        OrbitSpacing.vGapMd,
         OrbitGroupCard(
           children: [
             RadioListTile<ThemeMode>(
@@ -180,21 +290,84 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildPreferences(TextTheme textTheme, ColorScheme colorScheme, WidgetRef ref, dynamic prefs) {
+  Widget _buildIntegrationsSection(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<bool> healthAuthAsync,
+    AsyncValue<StravaAuthState> stravaStateAsync,
+  ) {
+    final isHealthConnected = healthAuthAsync.asData?.value ?? false;
+    final stravaState = stravaStateAsync.asData?.value;
+    final isStravaConnected = stravaState?.status == StravaConnectionStatus.connected ||
+        stravaState?.status == StravaConnectionStatus.syncing;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const OrbitSectionHeader(title: 'Integrations'),
+        OrbitSpacing.vGapMd,
+        OrbitGroupCard(
+          children: [
+            OrbitInfoTile(
+              icon: Icons.health_and_safety_outlined,
+              title: 'Health Connect',
+              subtitle: isHealthConnected ? 'Connected & syncing' : 'Tap to connect',
+              trailing: Switch(
+                value: isHealthConnected,
+                onChanged: (val) async {
+                  if (val) {
+                    await ref.read(healthServiceProvider).requestAuthorization();
+                    ref.invalidate(healthAuthorizationProvider);
+                  }
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            OrbitInfoTile(
+              icon: Icons.directions_run_outlined,
+              title: 'Strava',
+              subtitle: isStravaConnected
+                  ? 'Connected (${stravaState?.athleteName ?? 'User'})'
+                  : 'Activity & workout sync',
+              trailing: isStravaConnected
+                  ? TextButton(
+                      onPressed: () async {
+                        await ref.read(stravaSyncNotifierProvider.notifier).disconnect();
+                      },
+                      child: const Text('Disconnect', style: TextStyle(color: Colors.redAccent)),
+                    )
+                  : TextButton(
+                      onPressed: () async {
+                        await ref.read(stravaAuthNotifierProvider.notifier).connect();
+                      },
+                      child: const Text('Connect'),
+                    ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreferencesSection(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic prefs,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'Preferences'),
-        OrbitSpacing.gapMd,
+        OrbitSpacing.vGapMd,
         OrbitGroupCard(
           children: [
             OrbitInfoTile(
-              icon: Icons.notifications_none,
+              icon: Icons.notifications_none_rounded,
               title: 'Notifications',
               trailing: Switch(
                 value: prefs.notificationsEnabled,
                 onChanged: (v) => ref.read(preferencesNotifierProvider.notifier).updatePreferences(
-                  prefs.copyWith(notificationsEnabled: v)
+                  prefs.copyWith(notificationsEnabled: v),
                 ),
               ),
             ),
@@ -205,18 +378,18 @@ class ProfilePage extends ConsumerWidget {
               trailing: Switch(
                 value: prefs.aiAssistantEnabled,
                 onChanged: (v) => ref.read(preferencesNotifierProvider.notifier).updatePreferences(
-                  prefs.copyWith(aiAssistantEnabled: v)
+                  prefs.copyWith(aiAssistantEnabled: v),
                 ),
               ),
             ),
             const Divider(height: 1),
             OrbitInfoTile(
-              icon: Icons.sync,
+              icon: Icons.sync_rounded,
               title: 'Planner Sync',
               trailing: Switch(
                 value: prefs.plannerSyncEnabled,
                 onChanged: (v) => ref.read(preferencesNotifierProvider.notifier).updatePreferences(
-                  prefs.copyWith(plannerSyncEnabled: v)
+                  prefs.copyWith(plannerSyncEnabled: v),
                 ),
               ),
             ),
@@ -226,28 +399,22 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildAbout(ColorScheme colorScheme) {
+  Widget _buildAboutSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'About Orbit'),
-        OrbitSpacing.gapMd,
-        OrbitGroupCard(
+        OrbitSpacing.vGapMd,
+        const OrbitGroupCard(
           children: [
-            const OrbitInfoTile(
-              title: 'Version',
-              trailing: Text(
-                '0.1.0 MVP',
-                style: TextStyle(color: Colors.grey),
-              ),
+            OrbitInfoTile(
+              title: 'Philosophy',
+              subtitle: 'Become better than yesterday.',
             ),
-            const Divider(height: 1),
-            const OrbitInfoTile(
-              title: 'Developer',
-              trailing: Text(
-                'Bhavik',
-                style: TextStyle(color: Colors.grey),
-              ),
+            Divider(height: 1),
+            OrbitInfoTile(
+              title: 'Version',
+              trailing: Text('7.1 Certified', style: TextStyle(color: Colors.grey)),
             ),
           ],
         ),
@@ -255,13 +422,7 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomButton() {
-    return const SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: null, // Disabled
-        child: Text('More features coming soon'),
-      ),
-    );
+  String _formatDate(DateTime dt) {
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

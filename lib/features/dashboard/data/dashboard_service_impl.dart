@@ -7,6 +7,7 @@ import '../../planner/data/planner_repository.dart';
 import '../../health/data/health_repository.dart';
 import '../../score/data/repositories/score_repository.dart';
 import '../../goals/data/goal_repository.dart';
+import '../../habits/data/habit_repository.dart';
 import '../../score/data/repositories/personal_record_repository.dart';
 import '../../score/data/repositories/achievement_repository.dart';
 import '../../score/domain/services/score_service.dart';
@@ -17,6 +18,9 @@ import '../../tasks/domain/task.dart';
 import '../../focus/domain/focus_session.dart';
 import '../../health/domain/health_metrics.dart';
 import '../../goals/domain/goal.dart';
+import '../../habits/domain/habit_completion.dart';
+import '../../integrations/strava/domain/repositories/i_strava_repository.dart';
+import '../../integrations/strava/domain/entities/strava_activity.dart';
 
 class DashboardServiceImpl implements DashboardService {
   final TaskRepository _taskRepository;
@@ -26,6 +30,8 @@ class DashboardServiceImpl implements DashboardService {
   final ScoreRepository _scoreRepository;
   final GoalRepository _goalRepository;
   final PersonalRecordRepository _personalRecordRepository;
+  final HabitRepository? _habitRepository;
+  final IStravaRepository? _stravaRepository;
 
   final ScoreService? _scoreService;
 
@@ -38,7 +44,9 @@ class DashboardServiceImpl implements DashboardService {
     required GoalRepository goalRepository,
     required PersonalRecordRepository personalRecordRepository,
     required AchievementRepository achievementRepository,
+    HabitRepository? habitRepository,
     ScoreService? scoreService,
+    IStravaRepository? stravaRepository,
   })  : _taskRepository = taskRepository,
         _focusRepository = focusRepository,
         _plannerRepository = plannerRepository,
@@ -46,7 +54,10 @@ class DashboardServiceImpl implements DashboardService {
         _scoreRepository = scoreRepository,
         _goalRepository = goalRepository,
         _personalRecordRepository = personalRecordRepository,
-        _scoreService = scoreService;
+        _habitRepository = habitRepository,
+        _scoreService = scoreService,
+        _stravaRepository = stravaRepository;
+
 
   @override
   Future<DashboardState> getDashboardState([DateTime? date]) async {
@@ -66,6 +77,7 @@ class DashboardServiceImpl implements DashboardService {
       _goalRepository.getGoalsForDate(startOfDay),
       _personalRecordRepository.getAllRecords(),
       _scoreRepository.getDailyScore(yesterdayDate),
+      _habitRepository != null ? _habitRepository.getCompletionsForDate(startOfDay) : Future.value(<HabitCompletion>[]),
     ]);
 
     final allTasks = futures[0] as List<Task>;
@@ -78,6 +90,7 @@ class DashboardServiceImpl implements DashboardService {
     final goals = futures[7] as List<Goal>;
     final personalRecords = futures[8] as List<PersonalRecord>;
     final yesterdayScore = futures[9] as DailyScore?;
+    final habitCompletions = futures[10] as List<HabitCompletion>;
 
     // Tasks calculation
     int tasksCompleted = 0;
@@ -100,14 +113,33 @@ class DashboardServiceImpl implements DashboardService {
       }
     }
 
-    // Health calculation
+    // Strava activities
+    final List<StravaActivity> stravaActivities = [];
+    if (_stravaRepository != null) {
+      final endOfDay = DateTime(startOfDay.year, startOfDay.month, startOfDay.day, 23, 59, 59, 999);
+      final list = await _stravaRepository!.getActivitiesForDateRange(startOfDay, endOfDay);
+      stravaActivities.addAll(list);
+    }
+
+    // Health workout calculation with duplicate detection
     final steps = stepLog?.count ?? 0;
     final calories = stepLog?.calories ?? 0.0;
     final sleepMins = sleepLog?.durationMinutes ?? 0;
     int workoutMins = 0;
+
     for (final w in workoutLogs) {
-      workoutMins += w.durationMinutes;
+      // Check if Health Connect workout overlaps with a Strava activity
+      final isDuplicate = stravaActivities.any((sa) =>
+          sa.startDate.difference(w.date).abs() <= const Duration(minutes: 15) &&
+          (sa.durationMinutes - w.durationMinutes).abs() <= 15);
+      if (!isDuplicate) {
+        workoutMins += w.durationMinutes;
+      }
     }
+    for (final sa in stravaActivities) {
+      workoutMins += sa.durationMinutes;
+    }
+
 
     // Planner events calculation
     final List<PlannerEvent> todayEvents = [];
@@ -128,14 +160,14 @@ class DashboardServiceImpl implements DashboardService {
       }
     }
 
-    // Orbit Score
+    // Orbit Score: Use DB score if finalized; otherwise dynamically calculate live active score
     DailyScore orbitScore;
-    if (dbDailyScore != null) {
+    if (dbDailyScore != null && dbDailyScore.isFinalized) {
       orbitScore = dbDailyScore;
     } else if (_scoreService != null) {
       orbitScore = await _scoreService.calculateActiveScore(startOfDay);
     } else {
-      orbitScore = DailyScore.create(date: startOfDay);
+      orbitScore = dbDailyScore ?? DailyScore.create(date: startOfDay);
     }
 
     // Beat yesterday calculation
@@ -193,6 +225,39 @@ class DashboardServiceImpl implements DashboardService {
         isCompleted: e.isCompleted,
       ));
     }
+
+    for (final c in habitCompletions) {
+      todayTimeline.add(DashboardTimelineItem(
+        id: 'habit_${c.id}',
+        title: 'Habit Completed',
+        timestamp: c.date,
+        type: TimelineItemType.habit,
+        isCompleted: true,
+      ));
+    }
+
+    for (final w in workoutLogs) {
+      todayTimeline.add(DashboardTimelineItem(
+        id: 'workout_${w.id}',
+        title: w.type ?? 'Workout (${w.durationMinutes}m)',
+        subtitle: '${w.durationMinutes} minutes',
+        timestamp: w.date,
+        type: TimelineItemType.health,
+        isCompleted: true,
+      ));
+    }
+
+    for (final sa in stravaActivities) {
+      todayTimeline.add(DashboardTimelineItem(
+        id: 'strava_${sa.id}',
+        title: '${sa.name} (${sa.type})',
+        subtitle: '${sa.durationMinutes}m • ${sa.distanceKm.toStringAsFixed(1)} km',
+        timestamp: sa.startDate,
+        type: TimelineItemType.health,
+        isCompleted: true,
+      ));
+    }
+
 
     todayTimeline.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
