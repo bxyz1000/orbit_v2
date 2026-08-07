@@ -46,13 +46,15 @@ final scoreForDateProvider = StreamProvider.family<DailyScore?, DateTime>((ref, 
 });
 
 /// Stream that emits whenever any productivity data changes.
-final productivityDataChangesProvider = StreamProvider<void>((ref) async* {
+final productivityDataChangesProvider = StreamProvider<void>((ref) {
   final taskRepo = ref.watch(taskRepositoryProvider);
   final habitRepo = ref.watch(habitRepositoryProvider);
   final focusRepo = ref.watch(focusRepositoryProvider);
   final plannerRepo = ref.watch(plannerRepositoryProvider);
   final healthRepo = ref.watch(healthRepoProvider);
   final goalRepo = ref.watch(goalRepositoryProvider);
+
+  final controller = StreamController<void>();
 
   final streams = [
     taskRepo.watchTasks(),
@@ -66,9 +68,22 @@ final productivityDataChangesProvider = StreamProvider<void>((ref) async* {
     goalRepo.watchGoals(),
   ];
 
-  for (final stream in streams) {
-    yield* stream;
-  }
+  final subscriptions = streams.map((stream) {
+    return stream.listen((_) {
+      if (!controller.isClosed) {
+        controller.add(null);
+      }
+    });
+  }).toList();
+
+  ref.onDispose(() {
+    for (final sub in subscriptions) {
+      sub.cancel();
+    }
+    controller.close();
+  });
+
+  return controller.stream;
 });
 
 /// Provider for the current daily score value.

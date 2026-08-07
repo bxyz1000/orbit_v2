@@ -32,22 +32,22 @@ class HealthRepository {
 
   Future<void> syncHealthData(DateTime date) async {
     if (_healthService == null) {
-      debugPrint('HealthRepo: [WARN] Sync skipped - HealthService is null');
+      debugPrint('[HEALTH] WARN Sync skipped - HealthService is null');
       return;
     }
     
-    debugPrint('HealthRepo: [1] Starting sync for $date');
+    debugPrint('[HEALTH] sync started for $date');
     final isAuthorized = await _healthService.isAuthorized();
     if (!isAuthorized) {
-      debugPrint('HealthRepo: [WARN] Sync skipped - Not authorized');
+      debugPrint('[HEALTH] WARN Sync skipped - Not authorized');
       return;
     }
 
     final snapshot = await _healthService.getHealthSnapshot(date);
-    debugPrint('HealthRepo: [2] Snapshot received from service: steps=${snapshot.steps}');
+    debugPrint('[HEALTH] snapshot received from service: steps=${snapshot.steps}');
     
+    debugPrint('[HEALTH] repository write started');
     await _isar.writeTxn(() async {
-      debugPrint('HealthRepo: [3] Writing StepLog to Isar (Count: ${snapshot.steps})');
       final stepLog = StepLog.create(
         date: DateTime(date.year, date.month, date.day), 
         count: snapshot.steps,
@@ -58,7 +58,6 @@ class HealthRepository {
       await _isar.stepLogs.put(stepLog);
 
       if (snapshot.sleepMinutes > 0) {
-        debugPrint('HealthRepo: [4] Writing SleepLog to Isar (${snapshot.sleepMinutes} min)');
         final sleepLog = SleepLog.create(
           date: DateTime(date.year, date.month, date.day), 
           durationMinutes: snapshot.sleepMinutes
@@ -67,7 +66,6 @@ class HealthRepository {
       }
 
       if (snapshot.workoutMinutes > 0) {
-        debugPrint('HealthRepo: [5] Writing WorkoutLog to Isar (${snapshot.workoutMinutes} min)');
         final workoutLog = WorkoutLog.create(
           date: date, 
           durationMinutes: snapshot.workoutMinutes,
@@ -76,7 +74,7 @@ class HealthRepository {
         await _isar.workoutLogs.put(workoutLog);
       }
     });
-    debugPrint('HealthRepo: [6] Sync transaction successfully committed');
+    debugPrint('[HEALTH] repository write completed');
   }
 
   Future<void> saveSteps(StepLog log) async {

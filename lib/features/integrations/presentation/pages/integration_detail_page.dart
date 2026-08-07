@@ -8,6 +8,7 @@ import '../../../../shared/widgets/orbit_group_card.dart';
 import '../../../../shared/widgets/orbit_info_tile.dart';
 import '../../../health/presentation/providers/health_providers.dart';
 import '../../../../features/score/presentation/providers/score_providers.dart';
+import '../../../../features/dashboard/presentation/providers/dashboard_provider.dart';
 
 class IntegrationDetailPage extends ConsumerWidget {
   final String integrationId;
@@ -46,7 +47,7 @@ class IntegrationDetailPage extends ConsumerWidget {
                   _buildHealthConnectDetails(theme, colorScheme, integration)
                 else if (integration.id == 'strava')
                   _buildStravaDetails(theme, colorScheme, integration),
-                OrbitSpacing.gapXl,
+                OrbitSpacing.gapXxl,
                 _buildActions(context, ref, theme, colorScheme, integration),
               ],
             ),
@@ -73,7 +74,7 @@ class IntegrationDetailPage extends ConsumerWidget {
                padding: const EdgeInsets.only(top: 4),
                child: Text(
                  'Connected since ${_formatDate(integration.lastSync ?? DateTime.now())}',
-                 style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
+                 style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                ),
              ),
         ],
@@ -102,7 +103,7 @@ class IntegrationDetailPage extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.1),
+        color: iconColor.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -132,7 +133,7 @@ class IntegrationDetailPage extends ConsumerWidget {
         break;
       case IntegrationStatus.notConnected:
         statusText = 'Not Connected';
-        statusColor = colorScheme.onSurface.withOpacity(0.4);
+        statusColor = colorScheme.onSurface.withValues(alpha: 0.4);
         break;
     }
 
@@ -146,7 +147,7 @@ class IntegrationDetailPage extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: OrbitRadius.brCircular,
               ),
               child: Text(
@@ -255,20 +256,23 @@ class IntegrationDetailPage extends ConsumerWidget {
   }
 
   void _sync(BuildContext context, WidgetRef ref, Integration integration) async {
-    debugPrint('IntegrationDetail: Manual sync started for ${integration.id}');
+    debugPrint('[HEALTH] manual sync started for ${integration.id}');
     if (integration.id == 'health_connect') {
       ref.invalidate(healthSyncProvider);
       ref.invalidate(todayHealthSnapshotProvider);
       await ref.read(healthSyncProvider.future);
-      debugPrint('IntegrationDetail: Health Connect sync completed');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sync completed!')),
-      );
+      ref.invalidate(dashboardProvider);
+      debugPrint('[HEALTH] manual sync completed, dashboard provider updated');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sync completed!')),
+        );
+      }
     }
   }
 
   void _connect(BuildContext context, WidgetRef ref, Integration integration) async {
-    debugPrint('IntegrationDetail: Connect started for ${integration.id}');
+    debugPrint('[HEALTH] connect started for ${integration.id}');
     
     if (integration.id == 'health_connect') {
       try {
@@ -276,22 +280,22 @@ class IntegrationDetailPage extends ConsumerWidget {
         
         // 1. Check if already authorized
         bool authorized = await healthService.isAuthorized();
-        debugPrint('IntegrationDetail: initial isAuthorized result: $authorized');
+        debugPrint('[HEALTH] hasPermissions result: $authorized');
         
         if (!authorized) {
-          debugPrint('IntegrationDetail: Requesting authorization...');
+          debugPrint('[HEALTH] requestAuthorization started');
           authorized = await healthService.requestAuthorization();
-          debugPrint('IntegrationDetail: requestAuthorization result: $authorized');
+          debugPrint('[HEALTH] requestAuthorization result: $authorized');
         }
         
         if (authorized) {
-          debugPrint('IntegrationDetail: Authorization successful, updating repository...');
+          debugPrint('[HEALTH] updating integration status in repository...');
           final updated = integration.copyWith(
             status: IntegrationStatus.connected,
             lastSync: DateTime.now(),
           );
           await ref.read(integrationRepositoryProvider).updateIntegration(updated);
-          debugPrint('IntegrationDetail: Integration status updated to Connected');
+          debugPrint('[HEALTH] integration status persisted: connected');
           
           // Force refresh health data and connection status
           ref.invalidate(healthAuthorizationProvider);
@@ -300,10 +304,11 @@ class IntegrationDetailPage extends ConsumerWidget {
           ref.invalidate(integrationsStreamProvider);
           ref.invalidate(integrationByIdProvider(integration.id));
           
-          debugPrint('IntegrationDetail: Starting initial sync...');
+          debugPrint('[HEALTH] starting initial sync...');
           ref.invalidate(healthSyncProvider);
           await ref.read(healthSyncProvider.future);
-          debugPrint('IntegrationDetail: Initial sync completed');
+          ref.invalidate(dashboardProvider);
+          debugPrint('[HEALTH] initial sync completed, dashboard provider updated');
           
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -311,15 +316,16 @@ class IntegrationDetailPage extends ConsumerWidget {
             );
           }
         } else {
-          debugPrint('IntegrationDetail: Authorization failed or denied');
+          debugPrint('[HEALTH] authorization failed or denied');
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Authorization failed or denied.')),
             );
           }
         }
-      } catch (e) {
-        debugPrint('IntegrationDetail: Error during connection: $e');
+      } catch (e, stack) {
+        debugPrint('[HEALTH] ERR Exception during connection: $e');
+        debugPrint('[HEALTH] Stack: $stack');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

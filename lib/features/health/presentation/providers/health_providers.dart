@@ -19,23 +19,25 @@ final healthRepoProvider = Provider<HealthRepository>((ref) {
 
 final healthAuthorizationProvider = FutureProvider<bool>((ref) async {
   final service = ref.watch(healthServiceProvider);
-  debugPrint('HealthProviders: [Authorization] Checking permission status...');
+  debugPrint('[HEALTH] checking permission status...');
   final result = await service.isAuthorized();
-  debugPrint('HealthProviders: [Authorization] Result: $result');
+  debugPrint('[HEALTH] hasPermissions result: $result');
   return result;
 });
 
 final healthSyncProvider = FutureProvider<void>((ref) async {
   final repo = ref.watch(healthRepoProvider);
+  debugPrint('[HEALTH] sync started');
   await repo.syncHealthData(DateTime.now());
+  debugPrint('[HEALTH] provider refresh triggered');
 });
 
 final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
-  debugPrint('HealthProviders: [Snapshot] Provider rebuild started');
+  debugPrint('[HEALTH] snapshot provider rebuild started');
   
   final isAuthorized = await ref.watch(healthAuthorizationProvider.future);
   if (!isAuthorized) {
-    debugPrint('HealthProviders: [Snapshot] Returning empty (Not Authorized)');
+    debugPrint('[HEALTH] returning empty snapshot (Not Authorized)');
     return HealthSnapshot.empty();
   }
 
@@ -50,10 +52,8 @@ final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
   
   final stepLog = await repo.getStepsForDate(startOfDay);
   
-  // Bug 1 Fix: If data is missing for today and we are authorized, trigger a background sync
   if (stepLog == null) {
-    debugPrint('HealthProviders: [Snapshot] Today\'s data missing in Isar. Triggering sync...');
-    // We await here to ensure the first load with permissions has data if available
+    debugPrint('[HEALTH] today\'s data missing in Isar, triggering sync...');
     await repo.syncHealthData(now);
   }
   
@@ -73,6 +73,6 @@ final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
     timestamp: DateTime.now(),
   );
   
-  debugPrint('HealthProviders: [Snapshot] Data from Repository: steps=${snapshot.steps}');
+  debugPrint('[HEALTH] snapshot data from repository: steps=${snapshot.steps}');
   return snapshot;
 });

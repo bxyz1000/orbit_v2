@@ -14,6 +14,8 @@ import '../presentation/widgets/score_breakdown_bars.dart';
 import '../presentation/widgets/consistency_heatmap.dart';
 import '../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../dashboard/domain/entities/dashboard_state.dart';
+import '../../integrations/presentation/providers/integration_providers.dart';
+import '../../integrations/domain/entities/integration.dart';
 
 class OrbitHomePage extends ConsumerStatefulWidget {
   final VoidCallback onProfileTap;
@@ -46,10 +48,11 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
   }
 
   Future<void> _refreshHealth() async {
-    debugPrint('OrbitHome: Refreshing health data on resume/init');
+    debugPrint('[HEALTH] OrbitHome: Refreshing health data on resume/init');
     ref.invalidate(healthSyncProvider);
     ref.invalidate(todayHealthSnapshotProvider);
-    // dashboardProvider will automatically rebuild because it watches health records in Isar
+    await ref.read(healthSyncProvider.future);
+    ref.invalidate(dashboardProvider);
   }
 
   @override
@@ -75,9 +78,10 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
       body: dashboardAsync.when(
         data: (state) => RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(dashboardProvider);
             ref.invalidate(healthSyncProvider);
             ref.invalidate(todayHealthSnapshotProvider);
+            await ref.read(healthSyncProvider.future);
+            ref.invalidate(dashboardProvider);
             await ref.read(dashboardProvider.future);
           },
           child: SingleChildScrollView(
@@ -171,13 +175,33 @@ class _OrbitHomePageState extends ConsumerState<OrbitHomePage> with WidgetsBindi
             ElevatedButton(
               onPressed: () async {
                 try {
+                  debugPrint('[HEALTH] Home banner connect button pressed');
                   final success = await ref.read(healthServiceProvider).requestAuthorization();
+                  debugPrint('[HEALTH] requestAuthorization result: $success');
                   if (success) {
+                    final integrationRepo = ref.read(integrationRepositoryProvider);
+                    final integration = await integrationRepo.getIntegrationById('health_connect');
+                    if (integration != null) {
+                      final updated = integration.copyWith(
+                        status: IntegrationStatus.connected,
+                        lastSync: DateTime.now(),
+                      );
+                      await integrationRepo.updateIntegration(updated);
+                      debugPrint('[HEALTH] integration status persisted: connected');
+                    }
+
                     ref.invalidate(healthAuthorizationProvider);
+                    ref.invalidate(integrationsStreamProvider);
+                    ref.invalidate(integrationByIdProvider('health_connect'));
+                    
                     ref.invalidate(healthSyncProvider);
+                    ref.invalidate(todayHealthSnapshotProvider);
+                    await ref.read(healthSyncProvider.future);
                     ref.invalidate(dashboardProvider);
                   }
-                } catch (e) {
+                } catch (e, stack) {
+                  debugPrint('[HEALTH] ERR Exception during home banner connect: $e');
+                  debugPrint('[HEALTH] Stack: $stack');
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

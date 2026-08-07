@@ -17,14 +17,16 @@ class HealthServiceImpl implements IHealthService {
   @override
   Future<bool> isAuthorized() async {
     try {
-      debugPrint('HealthService: [1] Configuring health plugin...');
+      debugPrint('[HEALTH] configure started');
       await _health.configure();
-      debugPrint('HealthService: [2] Checking authorization...');
+      debugPrint('[HEALTH] configure completed');
+
       final hasPermissions = await _health.hasPermissions(_types);
-      debugPrint('HealthService: [2] Has permissions result: $hasPermissions');
+      debugPrint('[HEALTH] hasPermissions result: $hasPermissions');
       return hasPermissions ?? false;
-    } catch (e) {
-      debugPrint('HealthService: [ERR] Error checking authorization: $e');
+    } catch (e, stack) {
+      debugPrint('[HEALTH] ERR Error checking authorization: $e');
+      debugPrint('[HEALTH] Stack: $stack');
       return false;
     }
   }
@@ -32,20 +34,23 @@ class HealthServiceImpl implements IHealthService {
   @override
   Future<bool> requestAuthorization() async {
     try {
-      debugPrint('HealthService: [1] Configuring client for auth...');
+      debugPrint('[HEALTH] connect started');
+      debugPrint('[HEALTH] configure started');
       await _health.configure();
-      
+      debugPrint('[HEALTH] configure completed');
+
       final hcAvailable = await _health.isHealthConnectAvailable();
-      debugPrint('HealthService: [1.5] Health Connect Available: $hcAvailable');
-      
-      debugPrint('HealthService: [2] Requesting authorization for types: $_types');
+      debugPrint('[HEALTH] Health Connect Available: $hcAvailable');
+
+      debugPrint('[HEALTH] requestAuthorization started');
+      debugPrint('[HEALTH] requested types: $_types');
       final result = await _health.requestAuthorization(_types);
-      debugPrint('HealthService: [3] Authorization request result: $result');
-      
+      debugPrint('[HEALTH] requestAuthorization result: $result');
+
       return result;
     } catch (e, stack) {
-      debugPrint('HealthService: [ERR] Exception during requestAuthorization: $e');
-      debugPrint('HealthService: [ERR] Stack: $stack');
+      debugPrint('[HEALTH] ERR Exception during requestAuthorization: $e');
+      debugPrint('[HEALTH] Stack: $stack');
       rethrow;
     }
   }
@@ -57,8 +62,8 @@ class HealthServiceImpl implements IHealthService {
     final isToday = date.day == now.day && date.month == now.month && date.year == now.year;
     final endTime = isToday ? now : midnight.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
 
-    debugPrint('HealthService: [1] BEGIN snapshot query for $date');
-    debugPrint('HealthService: [2] Range: $midnight to $endTime');
+    debugPrint('[HEALTH] sync started for range: $midnight to $endTime');
+    debugPrint('[HEALTH] requested types: $_types');
 
     int steps = 0;
     double calories = 0;
@@ -68,21 +73,21 @@ class HealthServiceImpl implements IHealthService {
     int workoutMinutes = 0;
 
     try {
-      debugPrint('HealthService: [4] Calling health.configure()...');
+      debugPrint('[HEALTH] configure started');
       await _health.configure();
+      debugPrint('[HEALTH] configure completed');
 
       // 1. Total Steps
-      debugPrint('HealthService: [5] Querying getTotalStepsInInterval...');
       try {
         final stepsCount = await _health.getTotalStepsInInterval(midnight, endTime);
         steps = stepsCount ?? 0;
-        debugPrint('HealthService: [6] Aggregated steps result: $steps');
-      } catch (e) {
-        debugPrint('HealthService: [ERR] getTotalStepsInInterval failed: $e');
+        debugPrint('[HEALTH] getTotalStepsInInterval result: $steps');
+      } catch (e, stack) {
+        debugPrint('[HEALTH] ERR getTotalStepsInInterval failed: $e');
+        debugPrint('[HEALTH] Stack: $stack');
       }
 
       // 2. Raw Data Points
-      debugPrint('HealthService: [7] Querying getHealthDataFromTypes for $_types');
       final List<HealthDataPoint> data;
       try {
         data = await _health.getHealthDataFromTypes(
@@ -90,8 +95,9 @@ class HealthServiceImpl implements IHealthService {
           endTime: endTime,
           types: _types,
         );
-      } catch (e) {
-        debugPrint('HealthService: [ERR] getHealthDataFromTypes failed: $e');
+      } catch (e, stack) {
+        debugPrint('[HEALTH] ERR getHealthDataFromTypes failed: $e');
+        debugPrint('[HEALTH] Stack: $stack');
         return HealthSnapshot(
           steps: steps,
           calories: 0,
@@ -103,13 +109,10 @@ class HealthServiceImpl implements IHealthService {
         );
       }
       
-      debugPrint('HealthService: [8] Raw query completed. Count: ${data.length}');
+      debugPrint('[HEALTH] health records returned: ${data.length}');
 
       if (data.isEmpty) {
-        debugPrint('HealthService: [9] NO RECORDS RETURNED for specified types and range.');
-        debugPrint('  - Start: $midnight');
-        debugPrint('  - End: $endTime');
-        debugPrint('  - Types: $_types');
+        debugPrint('[HEALTH] NO RECORDS RETURNED for specified types and range ($midnight to $endTime)');
       }
 
       int stepsFromPoints = 0;
@@ -145,21 +148,16 @@ class HealthServiceImpl implements IHealthService {
       }
 
       if (steps == 0 && stepsFromPoints > 0) {
-        debugPrint('HealthService: [9] getTotalStepsInInterval was 0, but found $stepsFromPoints steps in points. Using sum.');
+        debugPrint('[HEALTH] getTotalStepsInInterval was 0, using sum of points: $stepsFromPoints');
         steps = stepsFromPoints;
       }
-      
-      debugPrint('HealthService: [10] MAPPING FINISHED');
-      debugPrint('  - Steps: $steps');
-      debugPrint('  - Calories: $calories');
-      debugPrint('  - Distance: $distance');
-      debugPrint('  - Active: $activeMinutes');
-      debugPrint('  - Sleep: $sleepMinutes');
-      debugPrint('  - Workout: $workoutMinutes');
+
+      debugPrint('[HEALTH] steps returned: $steps');
+      debugPrint('[HEALTH] snapshot details: calories=$calories, distance=$distance, activeMins=$activeMinutes, sleepMins=$sleepMinutes, workoutMins=$workoutMinutes');
 
     } catch (e, stack) {
-      debugPrint('HealthService: [FATAL] Retrieval failed: $e');
-      debugPrint('$stack');
+      debugPrint('[HEALTH] FATAL Retrieval failed: $e');
+      debugPrint('[HEALTH] Stack: $stack');
     }
 
     return HealthSnapshot(

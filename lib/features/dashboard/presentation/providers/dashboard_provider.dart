@@ -29,5 +29,7 @@ final dashboardProvider = FutureProvider<DashboardState>((ref) async {
   // Watch productivity data changes stream to trigger rebuild on any repository update
   ref.watch(productivityDataChangesProvider);
 
-  return await service.getDashboardState();
+  final state = await service.getDashboardState();
+  debugPrint('[HEALTH] dashboard provider updated: steps=${state.healthSteps}, calories=${state.healthCalories}');
+  return state;
 });
