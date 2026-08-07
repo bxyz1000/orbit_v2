@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_typography.dart';
+import '../../../core/theme/orbit_gradients.dart';
 import '../../../shared/widgets/orbit_hero_score.dart';
-import '../../../shared/widgets/orbit_metric_card.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
 import '../../../shared/providers/data_providers.dart';
 import '../../dashboard/presentation/providers/dashboard_provider.dart';
-import '../../dashboard/domain/entities/dashboard_state.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
 import '../../settings/presentation/providers/preferences_providers.dart';
 import '../../score/presentation/providers/score_providers.dart';
 import '../../health/presentation/providers/health_providers.dart';
 
-/// CENTER PAGE — Orbit Score Home. The default landing page.
+/// CENTER PAGE — Orbit Score. Premium personal instrument.
+/// The score visually dominates the entire page.
 class OrbitScorePage extends ConsumerWidget {
   const OrbitScorePage({super.key});
 
@@ -22,15 +23,11 @@ class OrbitScorePage extends ConsumerWidget {
     final dashboardAsync = ref.watch(dashboardProvider);
     final prefsAsync = ref.watch(userPreferencesProvider);
     final sevenDaysAsync = ref.watch(lastSevenDaysScoresProvider);
-    final healthAuthAsync = ref.watch(healthAuthorizationProvider);
-    final allHabitsAsync = ref.watch(allHabitsProvider);
-    final completedHabitsCountAsync = ref.watch(completedHabitsTodayCountProvider);
 
     return dashboardAsync.when(
       data: (state) {
         final userName = prefsAsync.asData?.value.userName ?? 'there';
         final greeting = _getGreeting();
-        final isHealthAuthorized = healthAuthAsync.asData?.value ?? false;
 
         // Compute 7-day baseline comparison
         String? baselineText;
@@ -60,6 +57,9 @@ class OrbitScorePage extends ConsumerWidget {
           motivationSubtitle = "You've got this.";
         }
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final colorScheme = Theme.of(context).colorScheme;
+
         return RefreshIndicator(
           onRefresh: () async {
             await ref.read(healthSyncNotifierProvider.notifier).sync();
@@ -67,64 +67,108 @@ class OrbitScorePage extends ConsumerWidget {
             ref.invalidate(dashboardProvider);
             await ref.read(dashboardProvider.future);
           },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: OrbitSpacing.pagePadding,
-              right: OrbitSpacing.pagePadding,
-              bottom: 120,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ─── Greeting + Avatar ───
-                _buildHeader(context, greeting, userName),
-                OrbitSpacing.vGapXxl,
-
-                // ─── Hero Score ───
-                Center(
-                  child: OrbitHeroScore(
-                    score: state.orbitScore.totalScore,
-                    progress:
-                        (state.orbitScore.totalScore / 100).clamp(0.0, 1.0),
-                    baselineText: baselineText,
-                    motivationTitle: motivationTitle,
-                    motivationSubtitle: motivationSubtitle,
+          child: Stack(
+            children: [
+              // Ambient copper aura background
+              if (!isDark)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: OrbitGradients.copperAura,
+                    ),
                   ),
                 ),
-                OrbitSpacing.vGapXxl,
 
-                // ─── Category Metrics Grid ───
-                _buildCategoryGrid(
-                  context,
-                  state,
-                  isHealthAuthorized,
-                  allHabitsAsync.asData?.value.length ?? 0,
-                  completedHabitsCountAsync.asData?.value ?? 0,
+              SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 20,
+                  left: OrbitSpacing.pagePadding,
+                  right: OrbitSpacing.pagePadding,
+                  bottom: MediaQuery.of(context).padding.bottom + 100,
                 ),
-                OrbitSpacing.vGapXxl,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ─── Greeting + Avatar ───
+                    _buildHeader(context, greeting, userName),
+                    const SizedBox(height: 40),
 
-                // ─── Today's Insight ───
-                _buildInsightsSection(context, ref),
-              ],
-            ),
+                    // ─── Hero Score (sole visual hero) ───
+                    Center(
+                      child: OrbitHeroScore(
+                        score: state.orbitScore.totalScore,
+                        progress:
+                            (state.orbitScore.totalScore / 100).clamp(0.0, 1.0),
+                        baselineText: baselineText,
+                        motivationTitle: motivationTitle,
+                        motivationSubtitle: motivationSubtitle,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // ─── Today's Insight (single elegant element) ───
+                    _buildInsightsSection(context, ref),
+
+                    const SizedBox(height: 24),
+
+                    // ─── Subtle supporting info: category summary ───
+                    _buildCategorySummary(context, state),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
+      loading: () => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            OrbitSpacing.vGapMd,
-            Text('Error loading dashboard: $e'),
-            TextButton(
-              onPressed: () => ref.invalidate(dashboardProvider),
-              child: const Text('Retry'),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: OrbitColors.copper500,
+              ),
             ),
           ],
+        ),
+      ),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 40,
+                  color: Colors.red.withValues(alpha: 0.6)),
+              OrbitSpacing.vGapMd,
+              Text(
+                'Unable to load your Orbit Score',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              OrbitSpacing.vGapSm,
+              Text(
+                '$e',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.4),
+                    ),
+              ),
+              OrbitSpacing.vGapLg,
+              TextButton(
+                onPressed: () => ref.invalidate(dashboardProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -142,23 +186,31 @@ class OrbitScorePage extends ConsumerWidget {
             Text(
               '$greeting,',
               style: OrbitTypography.greeting.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 14,
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               userName,
               style: OrbitTypography.userName.copyWith(
                 color: colorScheme.onSurface,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: colorScheme.primaryContainer,
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: Icon(
             Icons.person_rounded,
-            size: 22,
+            size: 20,
             color: colorScheme.onPrimaryContainer,
           ),
         ),
@@ -166,78 +218,62 @@ class OrbitScorePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCategoryGrid(
-    BuildContext context,
-    DashboardState state,
-    bool isHealthAuthorized,
-    int totalHabits,
-    int completedHabits,
-  ) {
+  /// Subtle supporting info — compact text-only category summary.
+  /// Replaces the removed 2x2 metric grid with minimal text.
+  Widget _buildCategorySummary(BuildContext context, dynamic state) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final totalTasks = state.tasksCompleted + state.tasksRemaining;
-    final taskPct = totalTasks > 0
-        ? (state.tasksCompleted / totalTasks * 100).roundToDouble()
-        : 0.0;
 
-    final focusPct = state.focusMinutesTarget > 0
-        ? (state.focusMinutesCompleted / state.focusMinutesTarget * 100)
-            .roundToDouble()
-            .clamp(0.0, 100.0)
-        : 0.0;
-
-    final habitPct = totalHabits > 0
-        ? (completedHabits / totalHabits * 100).roundToDouble().clamp(0.0, 100.0)
-        : 0.0;
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: OrbitMetricCard(
-                title: 'Tasks',
-                value: '${state.tasksCompleted} / $totalTasks',
-                icon: Icons.check_circle_outline_rounded,
-                percentage: taskPct,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OrbitMetricCard(
-                title: 'Focus',
-                value: '${state.focusMinutesCompleted} min',
-                icon: Icons.timer_outlined,
-                percentage: focusPct,
-              ),
-            ),
-          ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : OrbitColors.warmGray50.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : OrbitColors.warmGray200.withValues(alpha: 0.2),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OrbitMetricCard(
-                title: 'Habits',
-                value: '$completedHabits / $totalHabits',
-                icon: Icons.loop_rounded,
-                percentage: habitPct,
-              ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'TODAY\'S BREAKDOWN',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: colorScheme.onSurface.withValues(alpha: 0.35),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OrbitMetricCard(
-                title: 'Health',
-                value: isHealthAuthorized
-                    ? _formatNumber(state.healthSteps)
-                    : 'Not Connected',
-                icon: Icons.favorite_outline_rounded,
-                percentage: isHealthAuthorized
-                    ? (state.healthSteps / 10000 * 100).clamp(0.0, 100.0)
-                    : null,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _SummaryItem(
+                label: 'Tasks',
+                value: '${state.tasksCompleted}/$totalTasks',
+                color: colorScheme.primary,
               ),
-            ),
-          ],
-        ),
-      ],
+              _SummaryItem(
+                label: 'Focus',
+                value: '${state.focusMinutesCompleted}m',
+                color: OrbitColors.copper400,
+              ),
+              _SummaryItem(
+                label: 'Health',
+                value: _formatNumber(state.healthSteps),
+                color: OrbitColors.copper600,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -249,26 +285,30 @@ class OrbitScorePage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Today's Insight",
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          'INSIGHT',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+            color: colorScheme.onSurface.withValues(alpha: 0.35),
+          ),
         ),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 10),
         insightsAsync.when(
           data: (insights) {
             if (insights.isEmpty) {
               return Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(OrbitSpacing.lg),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   'Log your activities to unlock personalized insights.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                        color: colorScheme.onSurface.withValues(alpha: 0.4),
+                        height: 1.4,
                       ),
                 ),
               );
@@ -277,8 +317,10 @@ class OrbitScorePage extends ConsumerWidget {
             return OrbitInsightCardV2(insight: insights.first);
           },
           loading: () => const SizedBox(
-            height: 60,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            height: 50,
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 1.5),
+            ),
           ),
           error: (_, __) => const SizedBox.shrink(),
         ),
@@ -300,5 +342,48 @@ class OrbitScorePage extends ConsumerWidget {
       return '$thousands,$remainder';
     }
     return '$n';
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _SummaryItem({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

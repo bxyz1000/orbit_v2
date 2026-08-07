@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/orbit_colors.dart';
 import '../../core/theme/orbit_shadows.dart';
 
-/// Feature Hub card with icon, metric, label, gradient background, and press micro-interaction.
+/// Premium feature hub card with icon, metric, label, gradient background,
+/// and tactile press micro-interaction.
 class OrbitFeatureCard extends StatefulWidget {
   final String title;
   final String? subtitle;
@@ -13,6 +14,7 @@ class OrbitFeatureCard extends StatefulWidget {
   final VoidCallback? onTap;
   final Widget? badge;
   final bool isWide;
+  final double? height;
 
   const OrbitFeatureCard({
     super.key,
@@ -25,6 +27,7 @@ class OrbitFeatureCard extends StatefulWidget {
     this.onTap,
     this.badge,
     this.isWide = false,
+    this.height,
   });
 
   @override
@@ -39,23 +42,35 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final hasGradient = widget.gradient != null;
+    final textColor = hasGradient ? Colors.white : colorScheme.onSurface;
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
       onTap: widget.onTap,
       child: AnimatedScale(
-        scale: _isPressed ? 0.97 : 1.0,
+        scale: _isPressed ? 0.96 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+            color: hasGradient
+                ? null
+                : (isDark ? OrbitColors.darkElevated : OrbitColors.white),
             gradient: widget.gradient,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: _isPressed ? OrbitShadows.glass : OrbitShadows.card,
+            border: hasGradient
+                ? null
+                : Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : OrbitColors.warmGray200.withValues(alpha: 0.3),
+                  ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,28 +80,33 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (widget.iconColor ?? colorScheme.primary)
-                          .withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: hasGradient
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : (widget.iconColor ?? colorScheme.primary)
+                              .withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       widget.icon,
                       size: 18,
-                      color: widget.iconColor ?? colorScheme.primary,
+                      color: hasGradient
+                          ? Colors.white
+                          : (widget.iconColor ?? colorScheme.primary),
                     ),
                   ),
                   if (widget.badge != null) widget.badge!,
                 ],
               ),
-              const Flexible(child: SizedBox(height: 4)),
+              const SizedBox(height: 12),
               if (widget.metric != null)
                 Text(
                   widget.metric!,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: colorScheme.onSurface,
+                        color: textColor,
+                        fontSize: 20,
                       ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -96,20 +116,25 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                 widget.title,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: textColor.withValues(alpha: hasGradient ? 0.85 : 0.65),
+                      fontSize: 12,
                     ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               if (widget.subtitle != null)
-                Text(
-                  widget.subtitle!,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Text(
+                    widget.subtitle!,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: textColor.withValues(alpha: hasGradient ? 0.7 : 0.4),
+                          fontSize: 10,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
             ],
           ),
         ),

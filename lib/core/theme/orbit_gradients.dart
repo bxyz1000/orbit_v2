@@ -83,4 +83,36 @@ class OrbitGradients {
       Color(0xFF9A5F3C),
     ],
   );
+
+  /// Copper aura — soft radial ambient glow for score hero background
+  static const RadialGradient copperAura = RadialGradient(
+    center: Alignment(0.0, -0.3),
+    radius: 1.2,
+    colors: [
+      Color(0x18D4885C),
+      Color(0x08CC7A4A),
+      Color(0x00CC7A4A),
+    ],
+  );
+
+  /// Feature card glow overlay
+  static const LinearGradient featureCardGlow = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0x0AD4885C),
+      Color(0x04E8A878),
+      Color(0x00E8A878),
+    ],
+  );
+
+  /// Dark glass — subtle glassmorphism for dark mode cards
+  static const LinearGradient darkGlass = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0x12FFFFFF),
+      Color(0x06FFFFFF),
+    ],
+  );
 }

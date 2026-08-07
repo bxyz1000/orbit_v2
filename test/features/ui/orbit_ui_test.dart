@@ -9,9 +9,14 @@ import 'package:orbit_v2/shared/widgets/orbit_period_selector.dart';
 import 'package:orbit_v2/shared/widgets/orbit_activity_grid.dart';
 import 'package:orbit_v2/features/health/presentation/orbit_steps_page.dart';
 import 'package:orbit_v2/features/health/presentation/providers/health_providers.dart';
+import 'package:orbit_v2/features/health/presentation/providers/steps_page_providers.dart';
+import 'package:orbit_v2/features/health/domain/entities/health_snapshot.dart';
 import 'package:orbit_v2/features/home/presentation/orbit_feature_hub_page.dart';
 import 'package:orbit_v2/features/integrations/strava/presentation/providers/strava_providers.dart';
 import 'package:orbit_v2/features/integrations/strava/domain/entities/strava_auth_state.dart';
+import 'package:orbit_v2/shared/providers/data_providers.dart';
+import 'package:orbit_v2/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:orbit_v2/features/dashboard/domain/entities/dashboard_state.dart';
 
 void main() {
   group('Orbit Premium UI Widgets & Integration Tests', () {
@@ -147,6 +152,9 @@ void main() {
         ProviderScope(
           overrides: [
             healthAuthorizationProvider.overrideWith((ref) async => false),
+            todayHealthSnapshotProvider.overrideWith((ref) async => HealthSnapshot.empty()),
+            stepsComparisonProvider.overrideWith((ref) async => 0.0),
+            weeklyStepsProvider.overrideWith((ref) async => []),
           ],
           child: const MaterialApp(
             home: Scaffold(
@@ -166,8 +174,16 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            dashboardProvider.overrideWith((ref) async => DashboardState.empty()),
             stravaAuthStateStreamProvider.overrideWith((ref) => Stream.value(const StravaAuthState(status: StravaConnectionStatus.notConnected))),
             stravaActivitiesProvider.overrideWith((ref) async => []),
+            pendingTasksProvider.overrideWith((ref) async => []),
+            todayEventsProvider.overrideWith((ref) async => []),
+            allHabitsProvider.overrideWith((ref) async => []),
+            completedHabitsTodayCountProvider.overrideWith((ref) async => 0),
+            allNotesCountProvider.overrideWith((ref) async => 0),
+            healthAuthorizationProvider.overrideWith((ref) async => false),
+            todayHealthSnapshotProvider.overrideWith((ref) async => HealthSnapshot.empty()),
           ],
           child: MaterialApp(
             home: Scaffold(

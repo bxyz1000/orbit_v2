@@ -2,8 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/theme/orbit_colors.dart';
 
-/// Custom step activity grid visualization showing hourly activity intensity.
-/// Inspired by the reference healthcare wearable UI.
+/// Premium stacked square block activity grid visualization.
+/// Inspired by wearable health reference — rounded copper intensity blocks.
 class OrbitActivityGrid extends StatefulWidget {
   /// 24 values (one per hour, 0 AM - 11 PM), each 0.0 to 1.0 intensity.
   final List<double> hourlyIntensity;
@@ -63,92 +63,111 @@ class _OrbitActivityGridState extends State<OrbitActivityGrid>
 
     final maxVal = data.reduce(max);
 
+    // Grid: 24 columns (hours) x 6 rows (intensity levels)
+    const rows = 6;
+
     return Column(
       children: [
-        // Y-axis labels + grid
-        SizedBox(
-          height: 160,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Y-axis labels
-              if (widget.maxSteps > 0)
-                SizedBox(
-                  width: 30,
-                  height: 160,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _formatK(widget.maxSteps),
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: colorScheme.onSurface.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      Text(
-                        _formatK(widget.maxSteps ~/ 2),
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: colorScheme.onSurface.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                    ],
-                  ),
-                ),
-              if (widget.maxSteps > 0) const SizedBox(width: 6),
-              // Grid columns
-              Expanded(
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(24, (i) {
-                        final normalizedHeight = maxVal > 0
-                            ? (data[i] / maxVal).clamp(0.0, 1.0)
-                            : 0.0;
-
-                        // Stagger animation per column
-                        final delay = i / 24;
-                        final progress = (_controller.value - delay * 0.3)
-                            .clamp(0.0, 1.0);
-
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 1),
-                            child: _ActivityColumn(
-                              intensity: data[i],
-                              height: normalizedHeight * progress,
-                              accentColor: colorScheme.primary,
-                              isDark: isDark,
-                            ),
-                          ),
-                        );
-                      }),
-                    );
-                  },
-                ),
+        // Activity label
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'ACTIVITY',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),
-            ],
-          ),
+            ),
+            Text(
+              'Today',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Stacked square block grid
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return SizedBox(
+              height: 120,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(24, (col) {
+                  final intensity = data[col];
+                  final normalizedHeight = maxVal > 0
+                      ? (intensity / maxVal).clamp(0.0, 1.0)
+                      : 0.0;
+
+                  // Stagger animation per column
+                  final delay = col / 30.0;
+                  final progress =
+                      (_controller.value - delay).clamp(0.0, 1.0);
+
+                  // How many rows to fill based on intensity
+                  final filledRows = intensity > 0
+                      ? (normalizedHeight * rows * progress).ceil().clamp(1, rows)
+                      : 0;
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 1.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: List.generate(rows, (row) {
+                          final rowFromBottom = rows - 1 - row;
+                          final isActive = rowFromBottom < filledRows;
+
+                          // Intensity fades toward the top
+                          final cellOpacity = isActive
+                              ? (0.3 + (rowFromBottom / filledRows) * 0.7)
+                                  .clamp(0.3, 1.0)
+                              : 0.0;
+
+                          return Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.all(0.5),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? colorScheme.primary
+                                        .withValues(alpha: cellOpacity)
+                                    : (isDark
+                                        ? Colors.white.withValues(alpha: 0.03)
+                                        : OrbitColors.warmGray100
+                                            .withValues(alpha: 0.4)),
+                                borderRadius: BorderRadius.circular(2.5),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 8),
+
         // X-axis labels
-        Padding(
-          padding: EdgeInsets.only(left: widget.maxSteps > 0 ? 36 : 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _axisLabel('12 AM', colorScheme),
-              _axisLabel('6 AM', colorScheme),
-              _axisLabel('12 PM', colorScheme),
-              _axisLabel('6 PM', colorScheme),
-              _axisLabel('12 AM', colorScheme),
-            ],
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _axisLabel('12 AM', colorScheme),
+            _axisLabel('6 AM', colorScheme),
+            _axisLabel('12 PM', colorScheme),
+            _axisLabel('6 PM', colorScheme),
+            _axisLabel('12 AM', colorScheme),
+          ],
         ),
       ],
     );
@@ -159,47 +178,8 @@ class _OrbitActivityGridState extends State<OrbitActivityGrid>
       text,
       style: TextStyle(
         fontSize: 9,
-        color: colorScheme.onSurface.withValues(alpha: 0.4),
-      ),
-    );
-  }
-
-  String _formatK(int value) {
-    if (value >= 1000) return '${(value / 1000).toStringAsFixed(0)}K';
-    return '$value';
-  }
-}
-
-class _ActivityColumn extends StatelessWidget {
-  final double intensity;
-  final double height;
-  final Color accentColor;
-  final bool isDark;
-
-  const _ActivityColumn({
-    required this.intensity,
-    required this.height,
-    required this.accentColor,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final maxHeight = 140.0;
-    final barHeight = max(height * maxHeight, height > 0 ? 4.0 : 0.0);
-
-    // Color intensity based on value
-    final opacity = (0.2 + intensity * 0.8).clamp(0.2, 1.0);
-
-    return Container(
-      height: barHeight,
-      decoration: BoxDecoration(
-        color: intensity > 0
-            ? accentColor.withValues(alpha: opacity)
-            : (isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : OrbitColors.warmGray100),
-        borderRadius: BorderRadius.circular(3),
+        fontWeight: FontWeight.w500,
+        color: colorScheme.onSurface.withValues(alpha: 0.35),
       ),
     );
   }

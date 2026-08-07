@@ -12,7 +12,7 @@ import '../../health/presentation/providers/health_providers.dart';
 import '../../health/presentation/providers/steps_page_providers.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
 
-/// RIGHT PAGE — Premium Steps experience.
+/// RIGHT PAGE — Premium Steps experience. Closest visual match to wearable reference.
 class OrbitStepsPage extends ConsumerStatefulWidget {
   const OrbitStepsPage({super.key});
 
@@ -41,34 +41,28 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
         top: MediaQuery.of(context).padding.top + 16,
         left: OrbitSpacing.pagePadding,
         right: OrbitSpacing.pagePadding,
-        bottom: 120,
+        bottom: MediaQuery.of(context).padding.bottom + 100,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ─── Header ───
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SizedBox(width: 40), // Balance
-              Text(
-                'Steps',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              Icon(
-                Icons.settings_outlined,
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-            ],
+          Center(
+            child: Text(
+              'Steps',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    letterSpacing: 0.3,
+                  ),
+            ),
           ),
-          OrbitSpacing.vGapLg,
+          const SizedBox(height: 20),
 
           // ─── Health Connect Disconnected State ───
           if (!isAuthorized) ...[
             _buildDisconnectedBanner(context, ref),
-            OrbitSpacing.vGapXxl,
+            const SizedBox(height: 24),
           ],
 
           // ─── Period Selector ───
@@ -76,7 +70,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             selectedIndex: _periodIndex,
             onChanged: (i) => setState(() => _periodIndex = i),
           ),
-          OrbitSpacing.vGapXxl,
+          const SizedBox(height: 28),
 
           // ─── Day View ───
           if (_periodIndex == 0) ...[
@@ -99,7 +93,13 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             _buildMonthView(context),
           ],
 
-          OrbitSpacing.vGapXxl,
+          const SizedBox(height: 32),
+
+          // ─── Step History heading ───
+          if (isAuthorized && _periodIndex == 0) ...[
+            _buildStepHistory(context, weeklyAsync),
+            const SizedBox(height: 32),
+          ],
 
           // ─── Orbit Insights ───
           _buildInsights(context, insightsAsync),
@@ -110,41 +110,74 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
   Widget _buildDisconnectedBanner(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(OrbitSpacing.lg),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
+        color: isDark
+            ? OrbitColors.copper900.withValues(alpha: 0.3)
+            : OrbitColors.copper50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? OrbitColors.copper700.withValues(alpha: 0.3)
+              : OrbitColors.copper200.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.health_and_safety_outlined, color: colorScheme.primary, size: 28),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.health_and_safety_outlined,
+                color: colorScheme.primary, size: 22),
+          ),
           OrbitSpacing.hGapMd,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Health Connect Not Connected',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
                 Text(
-                  'Connect Health Connect to track real step activity.',
-                  style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                  'Health Connect Not Connected',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Connect to track steps & activity.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
               ],
             ),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () async {
-              final success = await ref.read(healthServiceProvider).requestAuthorization();
+              final success =
+                  await ref.read(healthServiceProvider).requestAuthorization();
               if (success) {
                 ref.invalidate(healthAuthorizationProvider);
                 ref.invalidate(todayHealthSnapshotProvider);
               }
             },
-            child: const Text('Connect'),
+            style: TextButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text('Connect', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -156,31 +189,32 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(OrbitSpacing.xxl),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
           Icon(
             Icons.directions_walk_rounded,
-            size: 40,
-            color: colorScheme.onSurface.withValues(alpha: 0.2),
+            size: 36,
+            color: colorScheme.onSurface.withValues(alpha: 0.15),
           ),
-          OrbitSpacing.vGapMd,
+          const SizedBox(height: 12),
           Text(
             'Step Data Unavailable',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  fontSize: 15,
                 ),
           ),
-          OrbitSpacing.vGapXs,
+          const SizedBox(height: 4),
           Text(
-            'Connect Health Connect above to sync your daily steps, distance, and active time.',
+            'Connect Health Connect above to sync your daily steps.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
                   height: 1.4,
                 ),
           ),
@@ -194,31 +228,32 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(OrbitSpacing.xxl),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
           Icon(
             Icons.bar_chart_rounded,
-            size: 40,
-            color: colorScheme.onSurface.withValues(alpha: 0.2),
+            size: 36,
+            color: colorScheme.onSurface.withValues(alpha: 0.15),
           ),
-          OrbitSpacing.vGapMd,
+          const SizedBox(height: 12),
           Text(
             'Step History Unavailable',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  fontSize: 15,
                 ),
           ),
-          OrbitSpacing.vGapXs,
+          const SizedBox(height: 4),
           Text(
-            'Connect Health Connect to view your weekly step history and averages.',
+            'Connect Health Connect to view your weekly step history.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
                   height: 1.4,
                 ),
           ),
@@ -241,7 +276,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
         return Column(
           children: [
-            // ─── Big Step Count ───
+            // ─── Large Hero Step Count ───
             Center(
               child: Column(
                 children: [
@@ -254,15 +289,22 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                         _formatNumber(val),
                         style: OrbitTypography.metricLarge.copyWith(
                           color: colorScheme.onSurface,
+                          fontSize: 56,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -2,
                         ),
                       );
                     },
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     'Steps',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
               ),
@@ -270,54 +312,57 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
             // ─── Comparison Badge ───
             if (comparison != 0.0) ...[
-              OrbitSpacing.vGapMd,
+              const SizedBox(height: 12),
               Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      comparison >= 0
-                          ? Icons.trending_up_rounded
-                          : Icons.trending_down_rounded,
-                      size: 14,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: (comparison >= 0
+                            ? OrbitColors.success
+                            : OrbitColors.error)
+                        .withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    '${comparison >= 0 ? '↑' : '↓'} ${comparison.abs().toStringAsFixed(1)}% vs last week',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                       color: comparison >= 0
                           ? OrbitColors.success
                           : OrbitColors.error,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${comparison >= 0 ? '↑' : '↓'} ${comparison.abs().toStringAsFixed(1)}% vs last week',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: comparison >= 0
-                                ? OrbitColors.success
-                                : OrbitColors.error,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
-            OrbitSpacing.vGapXxl,
+            const SizedBox(height: 28),
 
             // ─── Activity Grid ───
             Container(
-              padding: const EdgeInsets.all(OrbitSpacing.lg),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: OrbitShadows.card,
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : OrbitColors.warmGray200.withValues(alpha: 0.2),
+                ),
               ),
               child: OrbitActivityGrid(
-                hourlyIntensity: _calculateHourlyIntensity(snapshot.steps, snapshot.activeMinutes),
+                hourlyIntensity: _calculateHourlyIntensity(
+                    snapshot.steps, snapshot.activeMinutes),
                 maxSteps: snapshot.steps > 0
                     ? (snapshot.steps * 1.2).toInt()
                     : 6000,
               ),
             ),
-            OrbitSpacing.vGapLg,
+            const SizedBox(height: 12),
 
-            // ─── Distance + Active Time ───
+            // ─── Distance + Active Time Stat Pills ───
             Row(
               children: [
                 Expanded(
@@ -327,7 +372,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                     icon: Icons.place_outlined,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _StatPill(
                     label: 'Active Time',
@@ -337,7 +382,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                 ),
               ],
             ),
-            OrbitSpacing.vGapLg,
+            const SizedBox(height: 12),
 
             // ─── Daily Goal ───
             _buildDailyGoal(context, snapshot.steps, isDark),
@@ -346,7 +391,8 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
       },
       loading: () => const SizedBox(
         height: 200,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+            child: CircularProgressIndicator(strokeWidth: 1.5)),
       ),
       error: (e, _) => Center(
         child: Text('Unable to load step data: $e'),
@@ -360,11 +406,16 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(OrbitSpacing.lg),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: OrbitShadows.card,
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : OrbitColors.warmGray200.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         children: [
@@ -373,38 +424,31 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             children: [
               Text(
                 'Daily Goal',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-            ],
-          ),
-          OrbitSpacing.vGapSm,
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${_formatNumber(steps)} / ${_formatNumber(goal)} steps',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
                 ),
               ),
               Text(
                 '${(pct * 100).toInt()}%',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
-                    ),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.primary,
+                ),
               ),
             ],
           ),
-          OrbitSpacing.vGapSm,
+          const SizedBox(height: 4),
+          Text(
+            '${_formatNumber(steps)} / ${_formatNumber(goal)} steps',
+            style: TextStyle(
+              fontSize: 11,
+              color: colorScheme.onSurface.withValues(alpha: 0.45),
+            ),
+          ),
+          const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: TweenAnimationBuilder<double>(
@@ -414,9 +458,9 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
               builder: (context, val, _) {
                 return LinearProgressIndicator(
                   value: val,
-                  minHeight: 8,
+                  minHeight: 6,
                   backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
+                      ? Colors.white.withValues(alpha: 0.06)
                       : OrbitColors.warmGray100,
                   valueColor: AlwaysStoppedAnimation(colorScheme.primary),
                 );
@@ -425,6 +469,129 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Step history section showing last 7 days as compact list
+  Widget _buildStepHistory(
+      BuildContext context, AsyncValue<List<DailyStepEntry>> weeklyAsync) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'STEP HISTORY',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+            color: colorScheme.onSurface.withValues(alpha: 0.35),
+          ),
+        ),
+        const SizedBox(height: 12),
+        weeklyAsync.when(
+          data: (entries) {
+            if (entries.isEmpty) {
+              return Text(
+                'History will appear as data is collected.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurface.withValues(alpha: 0.35),
+                ),
+              );
+            }
+
+            final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            final now = DateTime.now();
+            int maxSteps = 0;
+            for (final e in entries) {
+              if (e.steps > maxSteps) maxSteps = e.steps;
+            }
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: OrbitShadows.card,
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : OrbitColors.warmGray200.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                children: List.generate(entries.length, (i) {
+                  final entry = entries[i];
+                  final isToday = (i + 1) == now.weekday;
+                  final barPct =
+                      maxSteps > 0 ? (entry.steps / maxSteps).clamp(0.0, 1.0) : 0.0;
+
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: i < entries.length - 1 ? 8 : 0),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 32,
+                          child: Text(
+                            i < dayLabels.length ? dayLabels[i] : '',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                              color: isToday
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface.withValues(alpha: 0.45),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: barPct,
+                              minHeight: 8,
+                              backgroundColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : OrbitColors.warmGray100.withValues(alpha: 0.5),
+                              valueColor: AlwaysStoppedAnimation(
+                                isToday
+                                    ? colorScheme.primary
+                                    : colorScheme.primary.withValues(alpha: 0.35),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 50,
+                          child: Text(
+                            _formatNumber(entry.steps),
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface.withValues(
+                                  alpha: isToday ? 0.9 : 0.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            );
+          },
+          loading: () => const SizedBox(
+            height: 60,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 
@@ -469,7 +636,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
       },
       loading: () => const SizedBox(
         height: 200,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
       ),
       error: (e, _) => Center(
         child: Text('Unable to load weekly data: $e'),
@@ -482,24 +649,24 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(OrbitSpacing.xl),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
           Icon(
             Icons.calendar_month_rounded,
-            size: 32,
-            color: colorScheme.onSurface.withValues(alpha: 0.2),
+            size: 28,
+            color: colorScheme.onSurface.withValues(alpha: 0.15),
           ),
-          OrbitSpacing.vGapMd,
+          const SizedBox(height: 12),
           Text(
             'Monthly view will appear here\nas Orbit collects more data.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  color: colorScheme.onSurface.withValues(alpha: 0.35),
                   height: 1.5,
                 ),
           ),
@@ -509,16 +676,21 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
   }
 
   Widget _buildInsights(BuildContext context, AsyncValue insightsAsync) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Orbit Insights',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          'ORBIT INSIGHTS',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+            color: colorScheme.onSurface.withValues(alpha: 0.35),
+          ),
         ),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 10),
         insightsAsync.when(
           data: (insights) {
             // Filter to health-related insights
@@ -536,12 +708,10 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             if (displayInsights.isEmpty) {
               return Text(
                 'Keep walking! Insights will appear as patterns emerge.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.4),
-                    ),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurface.withValues(alpha: 0.35),
+                ),
               );
             }
 
@@ -556,8 +726,8 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             );
           },
           loading: () => const SizedBox(
-            height: 60,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            height: 50,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
           ),
           error: (_, __) => const SizedBox.shrink(),
         ),
@@ -622,38 +792,54 @@ class _StatPill extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(OrbitSpacing.lg),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: OrbitShadows.card,
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : OrbitColors.warmGray200.withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                ),
-                OrbitSpacing.vGapXs,
-                Text(
                   value,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
                 ),
               ],
             ),
-          ),
-          Icon(
-            icon,
-            size: 20,
-            color: colorScheme.onSurface.withValues(alpha: 0.3),
           ),
         ],
       ),

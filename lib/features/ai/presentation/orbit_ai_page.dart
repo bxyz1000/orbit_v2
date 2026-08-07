@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_colors.dart';
@@ -5,7 +6,7 @@ import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_shadows.dart';
 import '../../settings/presentation/providers/preferences_providers.dart';
 
-/// Orbit AI Assistant UI Shell.
+/// Orbit AI Assistant UI Shell — premium copper-tinted chat interface.
 class OrbitAiPage extends ConsumerStatefulWidget {
   const OrbitAiPage({super.key});
 
@@ -64,13 +65,26 @@ class _OrbitAiPageState extends ConsumerState<OrbitAiPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? null : OrbitColors.warmWhite,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.auto_awesome_rounded, color: OrbitColors.copper500, size: 20),
-            OrbitSpacing.hGapSm,
-            const Text('Orbit AI'),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: OrbitColors.copper500.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded, color: OrbitColors.copper500, size: 16),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Orbit AI',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
           ],
         ),
         centerTitle: true,
@@ -96,68 +110,107 @@ class _OrbitAiPageState extends ConsumerState<OrbitAiPage> {
                 // ─── Suggestions ───
                 if (_messages.isEmpty)
                   SizedBox(
-                    height: 44,
+                    height: 40,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: OrbitSpacing.pagePadding),
                       itemCount: _suggestions.length,
                       separatorBuilder: (context, index) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
-                        return ActionChip(
-                          label: Text(_suggestions[index]),
-                          onPressed: () => _sendMessage(_suggestions[index]),
-                          backgroundColor: isDark ? OrbitColors.darkElevated : OrbitColors.warmGray50,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        return GestureDetector(
+                          onTap: () => _sendMessage(_suggestions[index]),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : OrbitColors.warmGray200.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              _suggestions[index],
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
                         );
                       },
                     ),
                   ),
-                OrbitSpacing.vGapMd,
+                const SizedBox(height: 12),
 
                 // ─── Input Bar ───
-                Container(
-                  padding: EdgeInsets.only(
-                    left: OrbitSpacing.pagePadding,
-                    right: OrbitSpacing.pagePadding,
-                    top: 8,
-                    bottom: MediaQuery.of(context).padding.bottom + 80,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark ? OrbitColors.darkSurface : OrbitColors.white,
-                    boxShadow: OrbitShadows.navBar,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          onSubmitted: _sendMessage,
-                          decoration: InputDecoration(
-                            hintText: 'Ask Orbit AI...',
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: isDark ? OrbitColors.darkElevated : OrbitColors.warmGray50,
+                ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: EdgeInsets.only(
+                        left: OrbitSpacing.pagePadding,
+                        right: OrbitSpacing.pagePadding,
+                        top: 10,
+                        bottom: MediaQuery.of(context).padding.bottom + 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? OrbitColors.darkSurface.withValues(alpha: 0.9)
+                            : OrbitColors.white.withValues(alpha: 0.9),
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : OrbitColors.warmGray200.withValues(alpha: 0.2),
                           ),
                         ),
                       ),
-                      OrbitSpacing.hGapSm,
-                      IconButton.filled(
-                        onPressed: () => _sendMessage(_controller.text),
-                        icon: const Icon(Icons.arrow_upward_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: colorScheme.primary,
-                          foregroundColor: Colors.white,
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              onSubmitted: _sendMessage,
+                              decoration: InputDecoration(
+                                hintText: 'Ask Orbit AI...',
+                                hintStyle: TextStyle(
+                                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                                  fontSize: 14,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: isDark ? OrbitColors.darkElevated : OrbitColors.warmGray50,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: IconButton(
+                              onPressed: () => _sendMessage(_controller.text),
+                              icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+                              color: Colors.white,
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -170,33 +223,41 @@ class _OrbitAiPageState extends ConsumerState<OrbitAiPage> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(OrbitSpacing.xxl),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.auto_awesome_outlined,
-              size: 48,
-              color: colorScheme.onSurface.withValues(alpha: 0.3),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.onSurface.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.auto_awesome_outlined,
+                size: 40,
+                color: colorScheme.onSurface.withValues(alpha: 0.25),
+              ),
             ),
-            OrbitSpacing.vGapLg,
+            const SizedBox(height: 20),
             Text(
               'AI Assistant Disabled',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
+                    fontSize: 18,
                   ),
             ),
-            OrbitSpacing.vGapSm,
+            const SizedBox(height: 8),
             Text(
-              'You can enable the AI Assistant in Profile & Settings preferences.',
+              'You can enable the AI Assistant in\nProfile & Settings preferences.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    height: 1.4,
+                    color: colorScheme.onSurface.withValues(alpha: 0.45),
+                    height: 1.5,
                   ),
             ),
-            OrbitSpacing.vGapLg,
-            ElevatedButton(
+            const SizedBox(height: 20),
+            TextButton(
               onPressed: () {
                 final prefs = ref.read(userPreferencesProvider).asData?.value;
                 if (prefs != null) {
@@ -205,7 +266,15 @@ class _OrbitAiPageState extends ConsumerState<OrbitAiPage> {
                       );
                 }
               },
-              child: const Text('Enable AI Assistant'),
+              style: TextButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text('Enable AI Assistant', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -218,36 +287,37 @@ class _OrbitAiPageState extends ConsumerState<OrbitAiPage> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(OrbitSpacing.xxl),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: OrbitColors.copper500.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                color: OrbitColors.copper500.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
                 Icons.auto_awesome_rounded,
-                size: 48,
+                size: 44,
                 color: OrbitColors.copper500,
               ),
             ),
-            OrbitSpacing.vGapLg,
+            const SizedBox(height: 24),
             Text(
               'How can I help you today?',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
             ),
-            OrbitSpacing.vGapSm,
+            const SizedBox(height: 8),
             Text(
               'Ask me about your score, activity patterns,\nor for guidance on your day.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    height: 1.4,
+                    color: colorScheme.onSurface.withValues(alpha: 0.45),
+                    height: 1.5,
                   ),
             ),
           ],
@@ -292,11 +362,18 @@ class _MessageBubble extends StatelessWidget {
               ? colorScheme.primary
               : (isDark ? OrbitColors.darkElevated : OrbitColors.warmGray100),
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(message.isUser ? 16 : 4),
-            bottomRight: Radius.circular(message.isUser ? 4 : 16),
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(message.isUser ? 18 : 4),
+            bottomRight: Radius.circular(message.isUser ? 4 : 18),
           ),
+          border: message.isUser
+              ? null
+              : Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : OrbitColors.warmGray200.withValues(alpha: 0.3),
+                ),
         ),
         child: Text(
           message.text,

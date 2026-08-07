@@ -12,7 +12,7 @@ import '../../health/presentation/providers/health_providers.dart';
 import '../../integrations/strava/presentation/providers/strava_providers.dart';
 import '../../integrations/strava/domain/entities/strava_auth_state.dart';
 
-/// Combined Profile + Settings destination.
+/// Combined Profile + Settings destination with premium styling.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
@@ -24,48 +24,66 @@ class ProfilePage extends ConsumerWidget {
     final recordsAsync = ref.watch(personalRecordsProvider);
     final healthAuthAsync = ref.watch(healthAuthorizationProvider);
     final stravaStateAsync = ref.watch(stravaAuthStateStreamProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? null : OrbitColors.warmWhite,
       appBar: AppBar(
-        title: const Text('Profile & Settings'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Profile & Settings',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            letterSpacing: 0.3,
+          ),
+        ),
         centerTitle: true,
       ),
       body: prefsAsync.when(
         data: (prefs) => SingleChildScrollView(
-          padding: const EdgeInsets.all(OrbitSpacing.pagePadding),
+          padding: const EdgeInsets.symmetric(horizontal: OrbitSpacing.pagePadding),
           child: Column(
             children: [
+              const SizedBox(height: 8),
               // ─── Profile Header ───
               _buildProfileHeader(context, prefs),
-              OrbitSpacing.vGapXxl,
+              const SizedBox(height: 28),
 
               // ─── Score & Streak Cards ───
-              _buildStatsRow(context, scoreAsync, streakAsync),
-              OrbitSpacing.vGapXxl,
+              _buildStatsRow(context, scoreAsync, streakAsync, isDark),
+              const SizedBox(height: 28),
 
               // ─── Personal Records ───
-              _buildPersonalRecords(context, recordsAsync),
-              OrbitSpacing.vGapXxl,
+              _buildPersonalRecords(context, recordsAsync, isDark),
+              const SizedBox(height: 28),
 
               // ─── Appearance ───
-              _buildAppearanceSection(context, ref, prefs),
-              OrbitSpacing.vGapXxl,
+              _buildAppearanceSection(context, ref, prefs, isDark),
+              const SizedBox(height: 28),
 
               // ─── Integrations ───
-              _buildIntegrationsSection(context, ref, healthAuthAsync, stravaStateAsync),
-              OrbitSpacing.vGapXxl,
+              _buildIntegrationsSection(context, ref, healthAuthAsync, stravaStateAsync, isDark),
+              const SizedBox(height: 28),
 
               // ─── Preferences ───
-              _buildPreferencesSection(context, ref, prefs),
-              OrbitSpacing.vGapXxl,
+              _buildPreferencesSection(context, ref, prefs, isDark),
+              const SizedBox(height: 28),
 
               // ─── About Orbit ───
-              _buildAboutSection(context),
-              OrbitSpacing.vGapXxxl,
+              _buildAboutSection(context, isDark),
+              const SizedBox(height: 48),
             ],
           ),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: OrbitColors.copper500,
+          ),
+        ),
         error: (e, _) => Center(child: Text('Error loading profile: $e')),
       ),
     );
@@ -78,45 +96,54 @@ class ProfilePage extends ConsumerWidget {
       children: [
         Stack(
           children: [
-            CircleAvatar(
-              radius: 46,
-              backgroundColor: colorScheme.primaryContainer,
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(28),
+              ),
               child: Icon(
                 Icons.person_rounded,
-                size: 46,
+                size: 42,
                 color: colorScheme.onPrimaryContainer,
               ),
             ),
             Positioned(
-              right: 0,
-              bottom: 0,
+              right: -2,
+              bottom: -2,
               child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
                   color: OrbitColors.copper500,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    width: 2,
+                  ),
                 ),
                 child: const Icon(
                   Icons.edit_rounded,
-                  size: 14,
+                  size: 12,
                   color: Colors.white,
                 ),
               ),
             ),
           ],
         ),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 14),
         Text(
           prefs.userName,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
               ),
         ),
-        OrbitSpacing.vGapXs,
+        const SizedBox(height: 4),
         Text(
           prefs.userTagline,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
               ),
         ),
       ],
@@ -127,10 +154,9 @@ class ProfilePage extends ConsumerWidget {
     BuildContext context,
     AsyncValue scoreAsync,
     AsyncValue<int> streakAsync,
+    bool isDark,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final scoreVal = scoreAsync.asData?.value.totalScore ?? 0;
     final streakVal = streakAsync.asData?.value ?? 0;
 
@@ -138,27 +164,35 @@ class ProfilePage extends ConsumerWidget {
       children: [
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(OrbitSpacing.lg),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(22),
               boxShadow: OrbitShadows.card,
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : OrbitColors.warmGray200.withValues(alpha: 0.2),
+              ),
             ),
             child: Column(
               children: [
                 Text(
                   '$scoreVal',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: colorScheme.primary,
+                        letterSpacing: -1,
                       ),
                 ),
-                OrbitSpacing.vGapXs,
+                const SizedBox(height: 2),
                 Text(
                   'Orbit Score',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface.withValues(alpha: 0.45),
+                  ),
                 ),
               ],
             ),
@@ -167,11 +201,16 @@ class ProfilePage extends ConsumerWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(OrbitSpacing.lg),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(22),
               boxShadow: OrbitShadows.card,
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : OrbitColors.warmGray200.withValues(alpha: 0.2),
+              ),
             ),
             child: Column(
               children: [
@@ -181,20 +220,23 @@ class ProfilePage extends ConsumerWidget {
                     Text(
                       '$streakVal',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             color: OrbitColors.copper500,
+                            letterSpacing: -1,
                           ),
                     ),
                     const SizedBox(width: 4),
                     const Text('🔥', style: TextStyle(fontSize: 20)),
                   ],
                 ),
-                OrbitSpacing.vGapXs,
+                const SizedBox(height: 2),
                 Text(
                   'Day Streak',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface.withValues(alpha: 0.45),
+                  ),
                 ),
               ],
             ),
@@ -204,12 +246,12 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildPersonalRecords(BuildContext context, AsyncValue recordsAsync) {
+  Widget _buildPersonalRecords(BuildContext context, AsyncValue recordsAsync, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'Personal Records'),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 10),
         recordsAsync.when(
           data: (records) {
             if (records.isEmpty) {
@@ -240,7 +282,9 @@ class ProfilePage extends ConsumerWidget {
               }).toList(),
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => Center(
+            child: CircularProgressIndicator(strokeWidth: 1.5, color: OrbitColors.copper500),
+          ),
           error: (_, __) => const SizedBox.shrink(),
         ),
       ],
@@ -251,6 +295,7 @@ class ProfilePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     dynamic prefs,
+    bool isDark,
   ) {
     final currentMode = ref.watch(appThemeModeProvider);
 
@@ -258,7 +303,7 @@ class ProfilePage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'Appearance'),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 10),
         OrbitGroupCard(
           children: [
             RadioListTile<ThemeMode>(
@@ -295,6 +340,7 @@ class ProfilePage extends ConsumerWidget {
     WidgetRef ref,
     AsyncValue<bool> healthAuthAsync,
     AsyncValue<StravaAuthState> stravaStateAsync,
+    bool isDark,
   ) {
     final isHealthConnected = healthAuthAsync.asData?.value ?? false;
     final stravaState = stravaStateAsync.asData?.value;
@@ -305,7 +351,7 @@ class ProfilePage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'Integrations'),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 10),
         OrbitGroupCard(
           children: [
             OrbitInfoTile(
@@ -353,12 +399,13 @@ class ProfilePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     dynamic prefs,
+    bool isDark,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'Preferences'),
-        OrbitSpacing.vGapMd,
+        const SizedBox(height: 10),
         OrbitGroupCard(
           children: [
             OrbitInfoTile(
@@ -399,22 +446,31 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildAboutSection(BuildContext context) {
+  Widget _buildAboutSection(BuildContext context, bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const OrbitSectionHeader(title: 'About Orbit'),
-        OrbitSpacing.vGapMd,
-        const OrbitGroupCard(
+        const SizedBox(height: 10),
+        OrbitGroupCard(
           children: [
             OrbitInfoTile(
               title: 'Philosophy',
               subtitle: 'Become better than yesterday.',
+              icon: Icons.auto_awesome_outlined,
             ),
-            Divider(height: 1),
+            const Divider(height: 1),
             OrbitInfoTile(
               title: 'Version',
-              trailing: Text('7.1 Certified', style: TextStyle(color: Colors.grey)),
+              trailing: Text(
+                '7.1 Certified',
+                style: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontSize: 13,
+                ),
+              ),
             ),
           ],
         ),

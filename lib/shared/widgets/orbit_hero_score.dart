@@ -4,7 +4,8 @@ import '../../core/theme/orbit_colors.dart';
 import '../../core/theme/orbit_typography.dart';
 import '../../core/theme/orbit_spacing.dart';
 
-/// Refined arc score meter with tick marks, gradient, glow, animated count-up.
+/// Premium semicircular score arc with fine tick marks, gradient progress,
+/// glow dot, animated count-up, and restrained copper accent.
 class OrbitHeroScore extends StatefulWidget {
   final int score;
   final double progress; // 0.0 - 1.0
@@ -91,46 +92,47 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
         Text(
           'ORBIT SCORE',
           style: OrbitTypography.sectionLabel.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.45),
-            letterSpacing: 2.0,
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
+            letterSpacing: 2.5,
+            fontSize: 10,
           ),
         ),
-        OrbitSpacing.vGapLg,
+        OrbitSpacing.vGapMd,
 
-        // Hero arc + score number
+        // Large score number above the arc
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Text(
+              '${_scoreAnim.value}',
+              style: OrbitTypography.scoreHero.copyWith(
+                color: colorScheme.onSurface,
+                fontSize: 88,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -3,
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+
+        // Hero arc gauge
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
             return ScaleTransition(
               scale: _scaleAnim,
               child: SizedBox(
-                width: 280,
-                height: 200,
+                width: 300,
+                height: 140,
                 child: CustomPaint(
-                  painter: _ScoreArcPainter(
+                  painter: _PremiumScoreArcPainter(
                     progress: _progressAnim.value,
                     accentColor: colorScheme.primary,
                     trackColor: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : OrbitColors.warmGray100,
-                  ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(
-                        '${_scoreAnim.value}',
-                        style: OrbitTypography.scoreHero.copyWith(
-                          color: colorScheme.onSurface,
-                          shadows: [
-                            Shadow(
-                              color: colorScheme.primary.withValues(alpha: 0.15),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : OrbitColors.warmGray100.withValues(alpha: 0.7),
+                    isDark: isDark,
                   ),
                 ),
               ),
@@ -140,11 +142,11 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
 
         // Baseline comparison
         if (widget.baselineText != null) ...[
-          OrbitSpacing.vGapSm,
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.08),
+              color: colorScheme.primary.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -152,15 +154,16 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
               children: [
                 Icon(
                   Icons.trending_up_rounded,
-                  size: 14,
+                  size: 13,
                   color: colorScheme.primary,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   widget.baselineText!,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: colorScheme.primary,
                         fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
                       ),
                 ),
               ],
@@ -170,28 +173,40 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
 
         // Motivation section
         if (widget.motivationTitle != null) ...[
-          OrbitSpacing.vGapXl,
+          const SizedBox(height: 24),
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.symmetric(
-              horizontal: OrbitSpacing.xl,
-              vertical: OrbitSpacing.md,
+              horizontal: 20,
+              vertical: 16,
             ),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : OrbitColors.warmGray50,
-              borderRadius: BorderRadius.circular(16),
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : OrbitColors.warmGray50.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : OrbitColors.warmGray200.withValues(alpha: 0.5),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : OrbitColors.warmGray200.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('⭐', style: TextStyle(fontSize: 16)),
-                OrbitSpacing.hGapSm,
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 16,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                OrbitSpacing.hGapMd,
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,6 +216,7 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
+                                  fontSize: 13,
                                 ),
                       ),
                       if (widget.motivationSubtitle != null)
@@ -209,7 +225,8 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurface
-                                        .withValues(alpha: 0.5),
+                                        .withValues(alpha: 0.45),
+                                    fontSize: 12,
                                   ),
                         ),
                     ],
@@ -224,26 +241,28 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
   }
 }
 
-class _ScoreArcPainter extends CustomPainter {
+class _PremiumScoreArcPainter extends CustomPainter {
   final double progress;
   final Color accentColor;
   final Color trackColor;
+  final bool isDark;
 
-  _ScoreArcPainter({
+  _PremiumScoreArcPainter({
     required this.progress,
     required this.accentColor,
     required this.trackColor,
+    required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height * 0.85);
-    final radius = size.width * 0.45;
-    const strokeWidth = 11.0;
-    const startAngle = pi + 0.3;
-    const totalSweep = pi - 0.6;
+    final center = Offset(size.width / 2, size.height * 0.95);
+    final radius = size.width * 0.44;
+    const strokeWidth = 8.0;
+    const startAngle = pi + 0.25;
+    const totalSweep = pi - 0.5;
 
-    // Outer subtle track
+    // Track arc (inactive)
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
@@ -258,13 +277,15 @@ class _ScoreArcPainter extends CustomPainter {
       trackPaint,
     );
 
-    // Tick marks
-    const tickCount = 40;
+    // Fine tick marks — 50 ticks
+    const tickCount = 50;
     for (int i = 0; i <= tickCount; i++) {
       final angle = startAngle + (totalSweep * i / tickCount);
-      final isLargeTick = i % 8 == 0;
-      final innerR = radius - strokeWidth / 2 - (isLargeTick ? 10 : 5);
-      final outerR = radius - strokeWidth / 2 - 2;
+      final isLargeTick = i % 10 == 0;
+      final isMediumTick = i % 5 == 0;
+      final tickLength = isLargeTick ? 10.0 : (isMediumTick ? 6.0 : 3.5);
+      final outerR = radius - strokeWidth / 2 - 4;
+      final innerR = outerR - tickLength;
 
       final start = Offset(
         center.dx + innerR * cos(angle),
@@ -275,9 +296,15 @@ class _ScoreArcPainter extends CustomPainter {
         center.dy + outerR * sin(angle),
       );
 
+      // Ticks within progress range get accent color
+      final isInProgress = (i / tickCount) <= progress;
+      final tickOpacity = isLargeTick ? 0.5 : (isMediumTick ? 0.3 : 0.15);
+
       final tickPaint = Paint()
-        ..color = trackColor.withValues(alpha: isLargeTick ? 0.5 : 0.25)
-        ..strokeWidth = isLargeTick ? 1.5 : 0.8
+        ..color = isInProgress
+            ? accentColor.withValues(alpha: tickOpacity + 0.3)
+            : trackColor.withValues(alpha: tickOpacity + 0.1)
+        ..strokeWidth = isLargeTick ? 1.5 : (isMediumTick ? 1.0 : 0.6)
         ..strokeCap = StrokeCap.round;
 
       canvas.drawLine(start, end, tickPaint);
@@ -294,8 +321,8 @@ class _ScoreArcPainter extends CustomPainter {
           startAngle: startAngle,
           endAngle: startAngle + totalSweep,
           colors: [
-            accentColor.withValues(alpha: 0.5),
-            accentColor,
+            accentColor.withValues(alpha: 0.4),
+            accentColor.withValues(alpha: 0.7),
             accentColor,
           ],
         ).createShader(Rect.fromCircle(center: center, radius: radius));
@@ -308,27 +335,92 @@ class _ScoreArcPainter extends CustomPainter {
         progressPaint,
       );
 
-      // Glow dot at the end
+      // Soft outer glow behind progress
+      final glowPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth + 12
+        ..strokeCap = StrokeCap.round
+        ..color = accentColor.withValues(alpha: 0.06);
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        totalSweep * progress.clamp(0.0, 1.0),
+        false,
+        glowPaint,
+      );
+
+      // Glow dot at the end of progress
       final endAngle = startAngle + totalSweep * progress.clamp(0.0, 1.0);
       final dotCenter = Offset(
         center.dx + radius * cos(endAngle),
         center.dy + radius * sin(endAngle),
       );
 
+      // Outer glow
       canvas.drawCircle(
         dotCenter,
-        strokeWidth / 2 + 3,
-        Paint()..color = accentColor.withValues(alpha: 0.25),
+        strokeWidth / 2 + 5,
+        Paint()..color = accentColor.withValues(alpha: 0.15),
       );
+      // Inner glow
+      canvas.drawCircle(
+        dotCenter,
+        strokeWidth / 2 + 2,
+        Paint()..color = accentColor.withValues(alpha: 0.3),
+      );
+      // Dot
       canvas.drawCircle(
         dotCenter,
         strokeWidth / 2,
         Paint()..color = accentColor,
       );
+      // White center
+      canvas.drawCircle(
+        dotCenter,
+        2.5,
+        Paint()..color = isDark ? const Color(0xFF1C1816) : Colors.white,
+      );
     }
+
+    // Min / Max labels below arc endpoints
+    final labelStyle = TextStyle(
+      fontSize: 9,
+      fontWeight: FontWeight.w500,
+      color: trackColor.withValues(alpha: 0.6),
+    );
+
+    // "0" label
+    final startLabelAngle = startAngle;
+    final startLabelPos = Offset(
+      center.dx + (radius + 18) * cos(startLabelAngle),
+      center.dy + (radius + 18) * sin(startLabelAngle),
+    );
+    _drawText(canvas, '0', startLabelPos, labelStyle);
+
+    // "100" label
+    final endLabelAngle = startAngle + totalSweep;
+    final endLabelPos = Offset(
+      center.dx + (radius + 18) * cos(endLabelAngle),
+      center.dy + (radius + 18) * sin(endLabelAngle),
+    );
+    _drawText(canvas, '100', endLabelPos, labelStyle);
+  }
+
+  void _drawText(Canvas canvas, String text, Offset position, TextStyle style) {
+    final textPainter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(position.dx - textPainter.width / 2,
+          position.dy - textPainter.height / 2),
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _ScoreArcPainter oldDelegate) =>
+  bool shouldRepaint(covariant _PremiumScoreArcPainter oldDelegate) =>
       oldDelegate.progress != progress;
 }
