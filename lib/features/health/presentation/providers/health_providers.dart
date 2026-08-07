@@ -51,16 +51,19 @@ class HealthSyncState {
   }
 }
 
-class HealthSyncNotifier extends StateNotifier<HealthSyncState> {
-  final HealthRepository _repo;
-  final IHealthService _service;
-
-  HealthSyncNotifier(this._repo, this._service) : super(const HealthSyncState());
+class HealthSyncNotifier extends Notifier<HealthSyncState> {
+  @override
+  HealthSyncState build() {
+    return const HealthSyncState();
+  }
 
   Future<void> sync() async {
     if (state.status == HealthSyncStatus.syncing) return;
 
-    final isAuthorized = await _service.isAuthorized();
+    final service = ref.read(healthServiceProvider);
+    final repo = ref.read(healthRepoProvider);
+
+    final isAuthorized = await service.isAuthorized();
     if (!isAuthorized) {
       debugPrint('[HEALTH] Sync skipped - Not authorized');
       return;
@@ -69,7 +72,7 @@ class HealthSyncNotifier extends StateNotifier<HealthSyncState> {
     state = state.copyWith(status: HealthSyncStatus.syncing, errorMessage: null);
     try {
       debugPrint('[HEALTH] sync started');
-      await _repo.syncHealthData(DateTime.now());
+      await repo.syncHealthData(DateTime.now());
       final now = DateTime.now();
       state = HealthSyncState(
         status: HealthSyncStatus.success,
@@ -87,10 +90,8 @@ class HealthSyncNotifier extends StateNotifier<HealthSyncState> {
   }
 }
 
-final healthSyncNotifierProvider = StateNotifierProvider<HealthSyncNotifier, HealthSyncState>((ref) {
-  final repo = ref.watch(healthRepoProvider);
-  final service = ref.watch(healthServiceProvider);
-  return HealthSyncNotifier(repo, service);
+final healthSyncNotifierProvider = NotifierProvider<HealthSyncNotifier, HealthSyncState>(() {
+  return HealthSyncNotifier();
 });
 
 final healthSyncProvider = FutureProvider<void>((ref) async {
