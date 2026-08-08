@@ -14,7 +14,7 @@ import '../../score/presentation/providers/score_providers.dart';
 import '../../health/presentation/providers/health_providers.dart';
 
 /// CENTER PAGE — Orbit Score Home.
-/// Matches Image 3 (Center) & Image 4 (Left) pixel-for-pixel.
+/// Displays real score, baseline comparison, category metrics, and daily insights.
 class OrbitScorePage extends ConsumerWidget {
   const OrbitScorePage({super.key});
 
@@ -26,11 +26,11 @@ class OrbitScorePage extends ConsumerWidget {
 
     return dashboardAsync.when(
       data: (state) {
-        final userName = prefsAsync.asData?.value.userName ?? 'Bhavik';
+        final userName = prefsAsync.asData?.value.userName ?? 'User';
         final greeting = _getGreeting();
 
-        // Compute 7-day baseline comparison
-        String baselineText = '↑ 6.4% vs your 7-day baseline';
+        // Compute 7-day baseline comparison strictly from real historical scores
+        String? baselineText;
         final sevenDays = sevenDaysAsync.asData?.value;
         if (sevenDays != null && sevenDays.length >= 7) {
           final avg7 = sevenDays
@@ -45,7 +45,7 @@ class OrbitScorePage extends ConsumerWidget {
           }
         }
 
-        // Motivation text
+        // Motivation text based strictly on state
         String motivationTitle;
         String motivationSubtitle;
         if (state.beatYesterdayScore <= 0) {
@@ -58,7 +58,6 @@ class OrbitScorePage extends ConsumerWidget {
         }
 
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final colorScheme = Theme.of(context).colorScheme;
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -222,33 +221,28 @@ class OrbitScorePage extends ConsumerWidget {
     );
   }
 
-  /// 2x2 Category Grid matching reference Image 3 & Image 4 exactly:
-  /// Tasks (7/9, 78%), Focus (82 min, 76%), Habits (4/5, 80%), Health (7,231, 72%)
+  /// 2x2 Category Grid driven strictly by real provider state.
   Widget _buildCategoryGrid(BuildContext context, dynamic state, bool isDark) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     final tasksTotal = (state.tasksCompleted + state.tasksRemaining);
-    final tasksValStr = tasksTotal > 0
-        ? '${state.tasksCompleted} / $tasksTotal'
-        : '${state.tasksCompleted} / 9';
+    final tasksValStr = '$state.tasksCompleted / $tasksTotal';
     final tasksPct = tasksTotal > 0
         ? (state.tasksCompleted / tasksTotal * 100).toInt()
-        : 78;
+        : 0;
 
-    final focusMin = state.focusMinutesCompleted > 0
-        ? state.focusMinutesCompleted
-        : 82;
+    final focusMin = state.focusMinutesCompleted;
     final focusPct = state.focusMinutesTarget > 0
         ? (focusMin / state.focusMinutesTarget * 100).toInt().clamp(0, 100)
-        : 76;
+        : 0;
 
-    final habitsValStr = '${state.goalsCompleted} / ${state.goalsCompleted + state.goalsRemaining > 0 ? state.goalsCompleted + state.goalsRemaining : 5}';
-    final habitsPct = 80;
+    final goalsTotal = state.goalsCompleted + state.goalsRemaining;
+    final habitsValStr = '${state.goalsCompleted} / $goalsTotal';
+    final habitsPct = goalsTotal > 0
+        ? (state.goalsCompleted / goalsTotal * 100).toInt()
+        : 0;
 
-    final healthStepsStr = state.healthSteps > 0
-        ? _formatNumber(state.healthSteps)
-        : '7,231';
-    final healthPct = 72;
+    final healthStepsStr = _formatNumber(state.healthSteps);
+    const dailyStepGoal = 10000;
+    final healthPct = (state.healthSteps / dailyStepGoal * 100).toInt().clamp(0, 100);
 
     return Column(
       children: [
@@ -355,7 +349,7 @@ class OrbitScorePage extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Your focus is 18% higher than your 7-day baseline.',
+                        'No insights available yet for today.',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -363,11 +357,6 @@ class OrbitScorePage extends ConsumerWidget {
                           height: 1.3,
                         ),
                       ),
-                    ),
-                    Icon(
-                      Icons.trending_up_rounded,
-                      size: 18,
-                      color: OrbitColors.copper500,
                     ),
                   ],
                 ),
@@ -404,7 +393,7 @@ class OrbitScorePage extends ConsumerWidget {
   }
 }
 
-/// Category Card widget for 2x2 grid matching reference Image 3 & 4
+/// Category Card widget for 2x2 grid
 class _CategoryCard extends StatelessWidget {
   final String title;
   final String value;

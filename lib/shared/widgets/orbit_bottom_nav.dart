@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/theme/orbit_colors.dart';
-import '../../core/theme/orbit_shadows.dart';
 
 /// Floating pill bottom navigation bar matching Image 3 & Image 4 pixel-for-pixel.
 class OrbitBottomNav extends StatelessWidget {

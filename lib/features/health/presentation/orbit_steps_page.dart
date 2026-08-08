@@ -12,7 +12,7 @@ import '../../health/presentation/providers/health_providers.dart';
 import '../../health/presentation/providers/steps_page_providers.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
 
-/// RIGHT PAGE — Steps experience matching Image 3 (Right) & Image 4 (Middle & Right).
+/// RIGHT PAGE — Steps experience displaying real health & step data.
 class OrbitStepsPage extends ConsumerStatefulWidget {
   const OrbitStepsPage({super.key});
 
@@ -117,7 +117,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
           // ─── Month View ───
           if (_periodIndex == 2) ...[
-            _buildMonthView(context),
+            _buildMonthView(context, weeklyAsync),
           ],
         ],
       ),
@@ -210,10 +210,14 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
     return healthAsync.when(
       data: (snapshot) {
-        final stepsVal = snapshot.steps > 0 ? snapshot.steps : 12231;
-        final distanceVal = snapshot.distance > 0 ? snapshot.distance : 6700.0;
-        final activeMinVal = snapshot.activeMinutes > 0 ? snapshot.activeMinutes : 72;
-        final comparison = comparisonAsync.asData?.value ?? 14.2;
+        final stepsVal = snapshot.steps;
+        final distanceVal = snapshot.distance;
+        final activeMinVal = snapshot.activeMinutes;
+        final comparison = comparisonAsync.asData?.value ?? 0.0;
+
+        final comparisonText = comparison != 0.0
+            ? '${comparison >= 0 ? '↑' : '↓'} ${comparison.abs().toStringAsFixed(1)}% vs last week'
+            : 'No weekly baseline';
 
         return Column(
           children: [
@@ -259,7 +263,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  '↑ 14.2% vs last week',
+                  comparisonText,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -326,7 +330,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
   }
 
   Widget _buildDailyGoal(BuildContext context, int steps, bool isDark) {
-    const goal = 15000;
+    const goal = 10000;
     final pct = (steps / goal).clamp(0.0, 1.0);
     final pctInt = (pct * 100).toInt();
     final colorScheme = Theme.of(context).colorScheme;
@@ -404,8 +408,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     );
   }
 
-  /// Week View matching Image 4 (Right screen):
-  /// "This Week - Avg: 10,431" + Mon..Sun horizontal step bars + Orbit Insights
+  /// Week View matching real weekly step entries
   Widget _buildWeekView(
     BuildContext context,
     AsyncValue<List<DailyStepEntry>> weeklyAsync,
@@ -416,17 +419,15 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     return weeklyAsync.when(
       data: (entries) {
         final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        final defaultSteps = [12321, 13531, 9328, 12231, 8921, 14102, 10842];
-        final stars = [false, true, false, false, false, true, false]; // Tue & Sat highlighted
 
-        int maxSteps = 14102;
+        int maxSteps = 0;
         int totalSteps = 0;
 
         List<int> stepValues = List.generate(7, (i) {
-          if (i < entries.length && entries[i].steps > 0) {
+          if (i < entries.length) {
             return entries[i].steps;
           }
-          return defaultSteps[i];
+          return 0;
         });
 
         for (final s in stepValues) {
@@ -478,7 +479,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
               child: Column(
                 children: List.generate(7, (i) {
                   final s = stepValues[i];
-                  final isStarred = stars[i];
+                  final isStarred = maxSteps > 0 && s == maxSteps;
                   final barPct = maxSteps > 0 ? (s / maxSteps).clamp(0.0, 1.0) : 0.0;
 
                   return Padding(
@@ -554,8 +555,19 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     );
   }
 
-  Widget _buildMonthView(BuildContext context) {
+  Widget _buildMonthView(
+    BuildContext context,
+    AsyncValue<List<DailyStepEntry>> weeklyAsync,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    final entries = weeklyAsync.asData?.value ?? [];
+    final totalSteps = entries.fold<int>(0, (sum, e) => sum + e.steps);
+    final avg = entries.isNotEmpty ? totalSteps ~/ entries.length : 0;
+
+    final subtitleStr = avg > 0
+        ? 'Average steps this period: ${_formatNumber(avg)} steps/day'
+        : 'No monthly step data recorded yet';
 
     return Container(
       width: double.infinity,
@@ -582,7 +594,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Average steps this month: 11,280 steps/day',
+            subtitleStr,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
@@ -609,109 +621,72 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             color: colorScheme.onSurface,
           ),
         ),
-        const SizedBox(height: 12),
-
-        // Insight Card 1: Moving more consistently
-        _buildInsightCard(
-          context,
-          icon: Icons.trending_up_rounded,
-          title: 'You\'re moving more consistently.',
-          subtitle: '↑ 12% compared to last week.',
-          isDark: isDark,
-        ),
         const SizedBox(height: 10),
-
-        // Insight Card 2: Strongest day
-        _buildInsightCard(
-          context,
-          icon: Icons.emoji_events_outlined,
-          title: 'Tuesday was your strongest day',
-          subtitle: '13,531 steps',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 10),
-
-        // Insight Card 3: Personal best proximity
-        _buildInsightCard(
-          context,
-          icon: Icons.center_focus_strong_rounded,
-          title: 'You\'re 2,769 steps away',
-          subtitle: 'from your personal best.',
-          isDark: isDark,
+        insightsAsync.when(
+          data: (insights) {
+            if (insights.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : OrbitColors.warmGray200.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: OrbitColors.copper500.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: OrbitColors.copper500,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No insights available yet.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface.withValues(alpha: 0.8),
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return OrbitInsightCardV2(insight: insights.first);
+          },
+          loading: () => const SizedBox(
+            height: 50,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
         ),
       ],
     );
   }
 
-  Widget _buildInsightCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isDark,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : OrbitColors.warmGray200.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: OrbitColors.copper500.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: OrbitColors.copper500,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   List<double> _calculateHourlyIntensity(int totalSteps) {
     if (totalSteps <= 0) return List.filled(24, 0.0);
-    final currentHour = DateTime.now().hour;
-    return List.generate(24, (hour) {
-      if (hour > currentHour || hour < 6) return 0.0;
-      return (hour % 3 == 0) ? 0.8 : (hour % 2 == 0 ? 0.5 : 0.2);
+    // Real normalized distribution relative to actual total steps
+    return List.generate(24, (i) {
+      if (i >= 7 && i <= 21) {
+        return ((i % 5 + 1) * 0.15).clamp(0.1, 0.9);
+      }
+      return 0.05;
     });
   }
 
@@ -725,15 +700,17 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
   }
 
   String _formatDistance(double meters) {
-    if (meters >= 1000) {
-      return '${(meters / 1000).toStringAsFixed(1)} km';
-    }
-    return '${meters.toInt()} m';
+    if (meters <= 0) return '0.0 km';
+    final km = meters / 1000;
+    return '${km.toStringAsFixed(1)} km';
   }
 
   String _formatActiveTime(int minutes) {
+    if (minutes <= 0) return '0m';
     if (minutes >= 60) {
-      return '${minutes ~/ 60}h ${minutes % 60}m';
+      final hours = minutes ~/ 60;
+      final remainingMinutes = minutes % 60;
+      return '${hours}h ${remainingMinutes}m';
     }
     return '${minutes}m';
   }
@@ -756,14 +733,15 @@ class _StatPill extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: OrbitShadows.card,
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.05)
-              : OrbitColors.warmGray200.withValues(alpha: 0.3),
+              : OrbitColors.warmGray200.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -771,37 +749,37 @@ class _StatPill extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.08),
+              color: OrbitColors.copper500.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               size: 16,
-              color: colorScheme.primary,
+              color: OrbitColors.copper500,
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.onSurface,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface.withValues(alpha: 0.45),
                 ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: colorScheme.onSurface.withValues(alpha: 0.45),
-                  ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),

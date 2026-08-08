@@ -1,8 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/theme/orbit_colors.dart';
-import '../../core/theme/orbit_typography.dart';
-import '../../core/theme/orbit_spacing.dart';
 
 /// Hero score gauge matching Image 3 & Image 4 pixel-for-pixel.
 class OrbitHeroScore extends StatefulWidget {

@@ -20,7 +20,7 @@ import '../../tasks/presentation/tasks_page.dart';
 import '../../analytics/presentation/insights_page.dart';
 
 /// LEFT PAGE — Feature Hub ("Your Orbit").
-/// Matches Image 3 (Left) pixel-for-pixel.
+/// Displays real feature counts, health metrics, and Strava integration status.
 class OrbitFeatureHubPage extends ConsumerWidget {
   final VoidCallback onNavigateToSteps;
 
@@ -45,6 +45,20 @@ class OrbitFeatureHubPage extends ConsumerWidget {
     final notesCountAsync = ref.watch(allNotesCountProvider);
 
     final isHealthAuthorized = healthAuthAsync.asData?.value ?? false;
+
+    final notesCount = notesCountAsync.asData?.value ?? 0;
+    final eventsCount = todayEventsAsync.asData?.value.length ?? 0;
+    final pendingTasksCount = pendingTasksAsync.asData?.value.length ?? 0;
+    final totalHabitsCount = habitsAsync.asData?.value.length ?? 0;
+    final completedHabitsCount = completedHabitsCountAsync.asData?.value ?? 0;
+    final dashboardState = dashboardAsync.asData?.value;
+    final focusMin = dashboardState?.focusMinutesCompleted ?? 0;
+    final goalsCount = dashboardState?.goalsCompleted ?? 0;
+    final orbitScoreVal = dashboardState?.orbitScore.totalScore ?? 0;
+
+    final focusMetricStr = focusMin >= 60
+        ? '${focusMin ~/ 60}h ${focusMin % 60}m'
+        : '${focusMin}m';
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -142,22 +156,24 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Notes',
-                  metric: '${notesCountAsync.asData?.value ?? 12}',
+                  metric: '$notesCount',
                   subtitle: 'Notes',
                   icon: Icons.description_outlined,
                   iconColor: Colors.amber,
                   backgroundPainter: DotsGridPainter(),
-                  badge: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: const BoxDecoration(
-                      color: OrbitColors.copper500,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Text(
-                      '3',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ),
+                  badge: notesCount > 0
+                      ? Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: OrbitColors.copper500,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$notesCount',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        )
+                      : null,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -173,7 +189,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Timer',
-                  metric: '25:00',
+                  metric: 'Timer',
                   subtitle: 'Pomodoro',
                   icon: Icons.timer_outlined,
                   iconColor: Colors.deepOrange,
@@ -199,7 +215,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Planner',
-                  metric: '${todayEventsAsync.asData?.value.length ?? 4}',
+                  metric: '$eventsCount',
                   subtitle: 'Events Today',
                   icon: Icons.calendar_today_rounded,
                   iconColor: Colors.purple,
@@ -219,7 +235,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Focus',
-                  metric: '1h 24m',
+                  metric: focusMetricStr,
                   subtitle: 'Deep Work',
                   icon: Icons.center_focus_strong_rounded,
                   iconColor: Colors.indigo,
@@ -245,7 +261,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Habits',
-                  metric: '${completedHabitsCountAsync.asData?.value ?? 4} / ${habitsAsync.asData?.value.length ?? 6}',
+                  metric: '$completedHabitsCount / $totalHabitsCount',
                   subtitle: 'Completed',
                   icon: Icons.repeat_rounded,
                   iconColor: Colors.green,
@@ -265,7 +281,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Tasks',
-                  metric: '${pendingTasksAsync.asData?.value.length ?? 7}',
+                  metric: '$pendingTasksCount',
                   subtitle: 'Pending Tasks',
                   icon: Icons.check_circle_outline_rounded,
                   iconColor: Colors.blue,
@@ -291,7 +307,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Goals',
-                  metric: '${dashboardAsync.asData?.value.goalsCompleted ?? 3}',
+                  metric: '$goalsCount',
                   subtitle: 'Active Goals',
                   icon: Icons.flag_rounded,
                   iconColor: Colors.teal,
@@ -309,7 +325,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Analytics',
-                  metric: '${dashboardAsync.asData?.value.orbitScore.totalScore ?? 78}',
+                  metric: '$orbitScoreVal',
                   subtitle: 'Avg. Score',
                   icon: Icons.insights_rounded,
                   iconColor: OrbitColors.copper500,
@@ -331,7 +347,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
           OrbitFeatureCard(
             title: 'Health',
             metric: isHealthAuthorized
-                ? '${_formatNumber(healthAsync.asData?.value.steps ?? 7231)} Steps Today'
+                ? '${_formatNumber(healthAsync.asData?.value.steps ?? 0)} Steps Today'
                 : 'Not Connected',
             subtitle: isHealthAuthorized
                 ? 'Tap to view full steps analytics'
@@ -382,9 +398,10 @@ class OrbitFeatureHubPage extends ConsumerWidget {
 
     return stravaActivitiesAsync.when(
       data: (activities) {
-        final latest = (activities as List).isNotEmpty ? activities.first : null;
-        final distanceKm = latest != null ? (latest.distanceMeters / 1000).toStringAsFixed(2) : '8.42';
-        final titleText = latest != null ? latest.name : 'Today\'s Run';
+        final activityList = activities as List;
+        final latest = activityList.isNotEmpty ? activityList.first : null;
+        final distanceKm = latest != null ? (latest.distanceMeters / 1000).toStringAsFixed(2) : '0.00';
+        final titleText = latest != null ? latest.name : 'No recent activities';
 
         return OrbitFeatureCard(
           title: 'Strava',
