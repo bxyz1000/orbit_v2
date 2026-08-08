@@ -5,6 +5,7 @@ import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_typography.dart';
 import '../../../core/theme/orbit_gradients.dart';
 import '../../../shared/widgets/orbit_feature_card.dart';
+import '../../../shared/widgets/orbit_card_painters.dart';
 import '../../../shared/providers/repository_providers.dart';
 import '../../../shared/providers/data_providers.dart';
 import '../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -130,7 +131,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
 
-          // ─── Feature Grid Composition (Matching Image 3 Left) ───
+          // ─── Feature Grid Composition ───
           // Row 1: Strava Hero Card
           _buildStravaCard(context, ref, stravaStateAsync, stravaActivitiesAsync),
           const SizedBox(height: 12),
@@ -145,6 +146,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Notes',
                   icon: Icons.description_outlined,
                   iconColor: Colors.amber,
+                  backgroundPainter: DotsGridPainter(),
                   badge: Container(
                     padding: const EdgeInsets.all(5),
                     decoration: const BoxDecoration(
@@ -175,6 +177,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Pomodoro',
                   icon: Icons.timer_outlined,
                   iconColor: Colors.deepOrange,
+                  backgroundPainter: TimerCardPainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -200,6 +203,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Events Today',
                   icon: Icons.calendar_today_rounded,
                   iconColor: Colors.purple,
+                  backgroundPainter: CalendarGridPainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -219,6 +223,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Deep Work',
                   icon: Icons.center_focus_strong_rounded,
                   iconColor: Colors.indigo,
+                  backgroundPainter: FocusWavePainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -244,6 +249,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Completed',
                   icon: Icons.repeat_rounded,
                   iconColor: Colors.green,
+                  backgroundPainter: HabitsRingPainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -263,6 +269,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Pending Tasks',
                   icon: Icons.check_circle_outline_rounded,
                   iconColor: Colors.blue,
+                  backgroundPainter: TasksCheckPainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -288,6 +295,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Active Goals',
                   icon: Icons.flag_rounded,
                   iconColor: Colors.teal,
+                  backgroundPainter: GoalsFlagPainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -305,6 +313,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   subtitle: 'Avg. Score',
                   icon: Icons.insights_rounded,
                   iconColor: OrbitColors.copper500,
+                  backgroundPainter: AnalyticsChartPainter(),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -330,6 +339,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
             icon: Icons.favorite_rounded,
             iconColor: Colors.redAccent,
             isWide: true,
+            backgroundPainter: HeartbeatPainter(),
             onTap: onNavigateToSteps,
           ),
         ],
@@ -355,6 +365,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
         icon: Icons.directions_run_rounded,
         iconColor: OrbitColors.copper500,
         isWide: true,
+        backgroundPainter: StravaRoutePainter(),
         onTap: () async {
           try {
             await ref.read(stravaAuthNotifierProvider.notifier).connect();
@@ -382,6 +393,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
           icon: Icons.directions_run_rounded,
           iconColor: OrbitColors.copper500,
           isWide: true,
+          backgroundPainter: StravaRoutePainter(),
           onTap: () async {
             try {
               await ref.read(stravaAuthNotifierProvider.notifier).connect();
@@ -395,18 +407,20 @@ class OrbitFeatureHubPage extends ConsumerWidget {
           },
         );
       },
-      loading: () => const OrbitFeatureCard(
+      loading: () => OrbitFeatureCard(
         title: 'Strava',
         metric: 'Syncing...',
         icon: Icons.directions_run_rounded,
         isWide: true,
+        backgroundPainter: StravaRoutePainter(),
       ),
-      error: (_, __) => const OrbitFeatureCard(
+      error: (_, __) => OrbitFeatureCard(
         title: 'Strava',
         metric: 'Connected',
         subtitle: 'Tap to sync workouts',
         icon: Icons.directions_run_rounded,
         isWide: true,
+        backgroundPainter: StravaRoutePainter(),
       ),
     );
   }

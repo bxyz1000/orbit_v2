@@ -121,24 +121,13 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
               color: OrbitColors.copper500.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.arrow_upward_rounded,
-                  size: 13,
-                  color: OrbitColors.copper500,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  widget.baselineText!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: OrbitColors.copper500,
-                  ),
-                ),
-              ],
+            child: Text(
+              widget.baselineText!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: OrbitColors.copper500,
+              ),
             ),
           ),
         const SizedBox(height: 16),

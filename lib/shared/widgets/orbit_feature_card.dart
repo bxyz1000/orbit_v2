@@ -3,7 +3,7 @@ import '../../core/theme/orbit_colors.dart';
 import '../../core/theme/orbit_shadows.dart';
 
 /// Premium feature hub card with icon, metric, label, gradient background,
-/// and tactile press micro-interaction.
+/// optional decorative painter, and tactile press micro-interaction.
 class OrbitFeatureCard extends StatefulWidget {
   final String title;
   final String? subtitle;
@@ -15,6 +15,7 @@ class OrbitFeatureCard extends StatefulWidget {
   final Widget? badge;
   final bool isWide;
   final double? height;
+  final CustomPainter? backgroundPainter;
 
   const OrbitFeatureCard({
     super.key,
@@ -28,6 +29,7 @@ class OrbitFeatureCard extends StatefulWidget {
     this.badge,
     this.isWide = false,
     this.height,
+    this.backgroundPainter,
   });
 
   @override
@@ -44,6 +46,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
 
     final hasGradient = widget.gradient != null;
     final textColor = hasGradient ? Colors.white : colorScheme.onSurface;
+    final accentColor = widget.iconColor ?? colorScheme.primary;
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
@@ -56,7 +59,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(16),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: hasGradient
                 ? null
@@ -69,72 +72,103 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                 : Border.all(
                     color: isDark
                         ? Colors.white.withValues(alpha: 0.06)
-                        : OrbitColors.warmGray200.withValues(alpha: 0.3),
+                        : OrbitColors.warmGray200.withValues(alpha: 0.4),
                   ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Stack(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
+              // Decorative background painter
+              if (widget.backgroundPainter != null)
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: widget.backgroundPainter!,
+                  ),
+                ),
+              // Subtle accent glow in top-right
+              if (!hasGradient)
+                Positioned(
+                  top: -20,
+                  right: -20,
+                  child: Container(
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
-                      color: hasGradient
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : (widget.iconColor ?? colorScheme.primary)
-                              .withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: 18,
-                      color: hasGradient
-                          ? Colors.white
-                          : (widget.iconColor ?? colorScheme.primary),
-                    ),
-                  ),
-                  if (widget.badge != null) widget.badge!,
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (widget.metric != null)
-                Text(
-                  widget.metric!,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
-                        fontSize: 20,
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          accentColor.withValues(alpha: 0.06),
+                          accentColor.withValues(alpha: 0.0),
+                        ],
                       ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              const SizedBox(height: 2),
-              Text(
-                widget.title,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: textColor.withValues(alpha: hasGradient ? 0.85 : 0.65),
-                      fontSize: 12,
                     ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (widget.subtitle != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Text(
-                    widget.subtitle!,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: textColor.withValues(alpha: hasGradient ? 0.7 : 0.4),
-                          fontSize: 10,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              // Card content
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: hasGradient
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : accentColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            widget.icon,
+                            size: 18,
+                            color: hasGradient ? Colors.white : accentColor,
+                          ),
+                        ),
+                        if (widget.badge != null) widget.badge!,
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (widget.metric != null)
+                      Text(
+                        widget.metric!,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                              fontSize: 20,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: textColor.withValues(alpha: hasGradient ? 0.85 : 0.65),
+                            fontSize: 12,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
+                          widget.subtitle!,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: textColor.withValues(alpha: hasGradient ? 0.7 : 0.4),
+                                fontSize: 10,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

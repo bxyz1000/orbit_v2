@@ -86,10 +86,11 @@ class OrbitGradients {
 
   /// Copper aura — soft radial ambient glow for score hero background
   static const RadialGradient copperAura = RadialGradient(
-    center: Alignment(0.0, -0.3),
-    radius: 1.2,
+    center: Alignment(0.0, -0.2),
+    radius: 1.0,
     colors: [
-      Color(0x18D4885C),
+      Color(0x40E8A878), // warm copper glow center
+      Color(0x20D4885C),
       Color(0x08CC7A4A),
       Color(0x00CC7A4A),
     ],

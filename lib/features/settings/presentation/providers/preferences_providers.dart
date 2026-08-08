@@ -36,11 +36,11 @@ final appThemeModeProvider = Provider<ThemeMode>((ref) {
       switch (prefs.themeMode) {
         case 'light': return ThemeMode.light;
         case 'dark': return ThemeMode.dark;
-        default: return ThemeMode.system;
+        default: return ThemeMode.light;
       }
     },
-    loading: () => ThemeMode.system,
-    error: (_, __) => ThemeMode.system,
+    loading: () => ThemeMode.light,
+    error: (_, __) => ThemeMode.light,
   );
 });
 
