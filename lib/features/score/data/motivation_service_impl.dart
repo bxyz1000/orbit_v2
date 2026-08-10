@@ -103,6 +103,11 @@ class MotivationServiceImpl implements MotivationService {
     if (focusSessions.length >= 10) {
        await _unlockAchievement('10_focus', 'Monk Mode', 'Completed 10 focus sessions.', 'Monk', 'Silver');
     }
+
+    final habitCompletions = await _habitRepository.getCompletionsForDate(DateTime.now());
+    if (habitCompletions.isNotEmpty) {
+      await _unlockAchievement('first_habit', 'Habit Builder', 'Completed a daily habit!', 'Habits', 'Bronze');
+    }
   }
 
   Future<void> _unlockAchievement(String id, String title, String desc, String cat, String tier) async {

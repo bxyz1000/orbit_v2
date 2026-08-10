@@ -14,9 +14,6 @@ import 'package:orbit_v2/features/score/domain/entities/personal_record.dart';
 import 'package:orbit_v2/features/score/domain/services/score_service.dart';
 import 'repositories/score_repository.dart';
 import 'repositories/personal_record_repository.dart';
-import 'package:orbit_v2/features/health/domain/calculators/health_score_calculator.dart';
-import 'package:orbit_v2/features/health/domain/entities/health_snapshot.dart';
-
 import 'package:orbit_v2/features/integrations/strava/domain/repositories/i_strava_repository.dart';
 import 'package:orbit_v2/features/score/domain/entities/score_input_model.dart';
 import 'package:orbit_v2/features/score/domain/services/score_engine_v2.dart';
@@ -188,7 +185,7 @@ class ScoreServiceImpl implements ScoreService {
 
     if (_stravaRepository != null) {
       final endOfDay = DateTime(startOfDay.year, startOfDay.month, startOfDay.day, 23, 59, 59, 999);
-      final stravaActivities = await _stravaRepository!.getActivitiesForDateRange(startOfDay, endOfDay);
+      final stravaActivities = await _stravaRepository.getActivitiesForDateRange(startOfDay, endOfDay);
       for (final sa in stravaActivities) {
         await _recordRepository.updateIfHigher('longest_strava_distance', sa.distanceKm, sa.startDate);
         await _recordRepository.updateIfHigher('highest_strava_elevation', sa.elevationGainMeters, sa.startDate);
@@ -229,7 +226,7 @@ class ScoreServiceImpl implements ScoreService {
     int workoutMinutes = 0;
     if (_stravaRepository != null) {
       final endOfDay = DateTime(startOfDay.year, startOfDay.month, startOfDay.day, 23, 59, 59, 999);
-      final stravaActivities = await _stravaRepository!.getActivitiesForDateRange(startOfDay, endOfDay);
+      final stravaActivities = await _stravaRepository.getActivitiesForDateRange(startOfDay, endOfDay);
       for (final w in workoutLogs) {
         final isDuplicate = stravaActivities.any((sa) =>
             sa.startDate.difference(w.date).abs() <= const Duration(minutes: 15) &&

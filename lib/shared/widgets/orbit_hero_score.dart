@@ -86,64 +86,88 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
           'ORBIT SCORE',
           style: TextStyle(
             fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             letterSpacing: 2.0,
-            color: colorScheme.onSurface.withValues(alpha: 0.45),
+            color: colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
 
-        // Large hero score number
-        AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return Text(
-              '${_scoreAnim.value}',
-              style: TextStyle(
-                fontSize: 84,
-                fontWeight: FontWeight.w800,
-                color: colorScheme.onSurface,
-                letterSpacing: -3,
-                height: 1.0,
+        // Large hero score number with ambient copper radial glow
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // Focused radial ambient copper glow
+            Container(
+              width: 180,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    OrbitColors.copper500.withValues(alpha: isDark ? 0.28 : 0.20),
+                    OrbitColors.copper500.withValues(alpha: 0.0),
+                  ],
+                ),
               ),
-            );
-          },
+            ),
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Text(
+                  '${_scoreAnim.value}',
+                  style: TextStyle(
+                    fontSize: 104,
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
+                    letterSpacing: -4,
+                    height: 0.95,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
         // Baseline comparison pill badge
         if (widget.baselineText != null)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: OrbitColors.copper500.withValues(alpha: 0.1),
+              color: OrbitColors.copper500.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: OrbitColors.copper500.withValues(alpha: 0.25),
+                width: 1,
+              ),
             ),
             child: Text(
               widget.baselineText!,
               style: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: OrbitColors.copper500,
+                letterSpacing: -0.2,
               ),
             ),
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // Semicircular score arc gauge with fine tick marks and glowing dot
+        // Flowing orbital arc curve underneath score with glowing node point
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
             return SizedBox(
-              width: 320,
-              height: 140,
+              width: 300,
+              height: 70,
               child: CustomPaint(
                 painter: _ScoreArcGaugePainter(
                   progress: _progressAnim.value,
                   accentColor: OrbitColors.copper500,
                   trackColor: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : OrbitColors.warmGray200.withValues(alpha: 0.5),
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : OrbitColors.warmGray200.withValues(alpha: 0.6),
                   isDark: isDark,
                 ),
               ),
@@ -204,13 +228,13 @@ class _ScoreArcGaugePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height * 0.9);
-    final radius = size.width * 0.44;
-    const strokeWidth = 5.0;
-    const startAngle = pi + 0.25;
-    const totalSweep = pi - 0.5;
+    final center = Offset(size.width / 2, size.height * -0.6);
+    final radius = size.width * 0.72;
+    const strokeWidth = 2.5;
+    const startAngle = pi * 0.28;
+    const totalSweep = pi * 0.44;
 
-    // Track arc
+    // Track orbital curve line
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
@@ -225,46 +249,19 @@ class _ScoreArcGaugePainter extends CustomPainter {
       trackPaint,
     );
 
-    // Fine tick marks (50 radial ticks with 0, 25, 50, 75, 100 markers)
-    const tickCount = 60;
-    for (int i = 0; i <= tickCount; i++) {
-      final angle = startAngle + (totalSweep * i / tickCount);
-      final isMajor = i % 15 == 0;
-      final tickLength = isMajor ? 9.0 : 4.0;
-      final outerR = radius - strokeWidth / 2 - 3;
-      final innerR = outerR - tickLength;
-
-      final start = Offset(
-        center.dx + innerR * cos(angle),
-        center.dy + innerR * sin(angle),
-      );
-      final end = Offset(
-        center.dx + outerR * cos(angle),
-        center.dy + outerR * sin(angle),
-      );
-
-      final isInProgress = (i / tickCount) <= progress;
-      final tickPaint = Paint()
-        ..color = isInProgress
-            ? accentColor.withValues(alpha: isMajor ? 0.8 : 0.4)
-            : trackColor.withValues(alpha: isMajor ? 0.4 : 0.2)
-        ..strokeWidth = isMajor ? 1.5 : 0.8;
-
-      canvas.drawLine(start, end, tickPaint);
-    }
-
-    // Progress arc
+    // Dynamic progress curve line
     if (progress > 0) {
+      final activeSweep = totalSweep * progress.clamp(0.0, 1.0);
       final progressPaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 1
+        ..strokeWidth = strokeWidth + 0.5
         ..strokeCap = StrokeCap.round
         ..shader = SweepGradient(
           center: Alignment.center,
           startAngle: startAngle,
           endAngle: startAngle + totalSweep,
           colors: [
-            accentColor.withValues(alpha: 0.5),
+            accentColor.withValues(alpha: 0.35),
             accentColor,
           ],
         ).createShader(Rect.fromCircle(center: center, radius: radius));
@@ -272,13 +269,13 @@ class _ScoreArcGaugePainter extends CustomPainter {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
-        totalSweep * progress.clamp(0.0, 1.0),
+        activeSweep,
         false,
         progressPaint,
       );
 
       // Glowing dot endpoint marker
-      final endAngle = startAngle + totalSweep * progress.clamp(0.0, 1.0);
+      final endAngle = startAngle + activeSweep;
       final dotCenter = Offset(
         center.dx + radius * cos(endAngle),
         center.dy + radius * sin(endAngle),
@@ -287,52 +284,22 @@ class _ScoreArcGaugePainter extends CustomPainter {
       // Outer glow circle
       canvas.drawCircle(
         dotCenter,
-        8,
-        Paint()..color = accentColor.withValues(alpha: 0.25),
+        7,
+        Paint()..color = accentColor.withValues(alpha: 0.28),
       );
       // Main dot
       canvas.drawCircle(
         dotCenter,
-        5,
+        4.5,
         Paint()..color = accentColor,
       );
       // White inner core
       canvas.drawCircle(
         dotCenter,
-        2.5,
+        2.0,
         Paint()..color = Colors.white,
       );
     }
-
-    // Tick labels: 0, 25, 50, 75, 100
-    final labelStyle = TextStyle(
-      fontSize: 9,
-      fontWeight: FontWeight.w500,
-      color: trackColor.withValues(alpha: 0.6),
-    );
-
-    const labels = ['0', '25', '50', '75', '100'];
-    for (int i = 0; i < labels.length; i++) {
-      final angle = startAngle + (totalSweep * i / (labels.length - 1));
-      final pos = Offset(
-        center.dx + (radius - 20) * cos(angle),
-        center.dy + (radius - 20) * sin(angle),
-      );
-      _drawText(canvas, labels[i], pos, labelStyle);
-    }
-  }
-
-  void _drawText(Canvas canvas, String text, Offset position, TextStyle style) {
-    final textPainter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(position.dx - textPainter.width / 2,
-          position.dy - textPainter.height / 2),
-    );
   }
 
   @override

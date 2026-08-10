@@ -88,9 +88,9 @@ class OrbitScorePage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── Header: Greeting + Avatar ───
-                    _buildHeader(context, greeting, userName),
-                    const SizedBox(height: 24),
+                    // ─── Top: Curved Orbital Day Selector ───
+                    _buildCurvedDaySelector(context, isDark),
+                    const SizedBox(height: 20),
 
                     // ─── Hero Orbit Score Arc Meter ───
                     Center(
@@ -103,10 +103,14 @@ class OrbitScorePage extends ConsumerWidget {
                         motivationSubtitle: motivationSubtitle,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // ─── 2x2 Category Metrics Grid ───
                     _buildCategoryGrid(context, state, isDark),
+                    const SizedBox(height: 18),
+
+                    // ─── Today's Performance Section ───
+                    _buildTodaysPerformanceSection(context, state, isDark),
                     const SizedBox(height: 16),
 
                     // ─── Today's Insight Section ───
@@ -155,70 +159,246 @@ class OrbitScorePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String greeting, String userName) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildCurvedDaySelector(BuildContext context, bool isDark) {
+    final now = DateTime.now();
+    // Days of the week around today
+    final days = List.generate(5, (index) {
+      final d = now.add(Duration(days: index - 2));
+      final dayName = _getDayAbbr(d.weekday);
+      return (dayName: dayName, dayNum: d.day, isToday: index == 2);
+    });
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$greeting,',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              userName,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: colorScheme.onSurface,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ],
+    // Y offsets for downward orbital arc curve: [14, 4, 0, 4, 14]
+    const yOffsets = [14.0, 4.0, 0.0, 4.0, 14.0];
+    const opacities = [0.45, 0.75, 1.0, 0.75, 0.45];
+
+    return SizedBox(
+      height: 60,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Gentle dashed orbital trajectory curve line
+          CustomPaint(
+            size: const Size(double.infinity, 60),
+            painter: _CurvedDayArcPainter(isDark: isDark),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(5, (i) {
+              final item = days[i];
+              final offsetY = yOffsets[i];
+              final opacity = opacities[i];
+
+              if (item.isToday) {
+                return Transform.translate(
+                  offset: Offset(0, offsetY),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.dayName,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: OrbitColors.copper500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x33E96832),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${item.dayNum}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF171514),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: OrbitColors.copper500,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Transform.translate(
+                offset: Offset(0, offsetY),
+                child: Opacity(
+                  opacity: opacity,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.dayName,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : const Color(0xFF78716C),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${item.dayNum}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF171514),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodaysPerformanceSection(BuildContext context, dynamic state, bool isDark) {
+    final tasksTotal = (state.tasksCompleted + state.tasksRemaining);
+    final tasksPct = tasksTotal > 0
+        ? (state.tasksCompleted / tasksTotal * 100).toInt().clamp(0, 100)
+        : 0;
+
+    final focusMin = state.focusMinutesCompleted;
+    final focusPct = state.focusMinutesTarget > 0
+        ? (focusMin / state.focusMinutesTarget * 100).toInt().clamp(0, 100)
+        : 0;
+
+    final goalsTotal = state.goalsCompleted + state.goalsRemaining;
+    final habitsPct = goalsTotal > 0
+        ? (state.goalsCompleted / goalsTotal * 100).toInt().clamp(0, 100)
+        : 0;
+
+    const dailyStepGoal = 10000;
+    final healthPct = (state.healthSteps / dailyStepGoal * 100).toInt().clamp(0, 100);
+
+    final metrics = [
+      (title: 'Tasks', pct: tasksPct),
+      (title: 'Focus', pct: focusPct),
+      (title: 'Habits', pct: habitsPct),
+      (title: 'Health', pct: healthPct),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? OrbitColors.darkElevated : const Color(0xFFFAF6F2),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.04),
         ),
-        Stack(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TODAY\'S PERFORMANCE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: Color(0xFF78716C),
+                ),
               ),
-              child: Icon(
-                Icons.person_rounded,
-                size: 22,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
-            Positioned(
-              right: 1,
-              top: 1,
-              child: Container(
-                width: 10,
-                height: 10,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: OrbitColors.copper500,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    width: 1.5,
+                  color: OrbitColors.copper500.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Optimal',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: OrbitColors.copper500,
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...metrics.map((m) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 55,
+                      child: Text(
+                        m.title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : const Color(0xFF171514),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (m.pct / 100).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : const Color(0xFFEFE8E2),
+                          valueColor: const AlwaysStoppedAnimation(OrbitColors.copper500),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 32,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${m.pct}%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white60 : const Color(0xFF78716C),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
     );
+  }
+
+  String _getDayAbbr(int weekday) {
+    const abbrs = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return abbrs[(weekday - 1) % 7];
   }
 
   /// 2x2 Category Grid driven strictly by real provider state.
@@ -418,12 +598,12 @@ class _CategoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? OrbitColors.darkElevated : const Color(0xFFFAF6F2),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.05)
-              : OrbitColors.warmGray200.withValues(alpha: 0.3),
+              : Colors.black.withValues(alpha: 0.04),
         ),
         boxShadow: [
           BoxShadow(
@@ -440,66 +620,91 @@ class _CategoryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                title,
+                title.toUpperCase(),
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: isDark ? Colors.white60 : const Color(0xFF78716C),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(6),
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
+                  color: OrbitColors.copper500.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  size: 16,
-                  color: colorScheme.primary,
+                  size: 13,
+                  color: OrbitColors.copper500,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: colorScheme.onSurface,
+              color: isDark ? Colors.white : const Color(0xFF171514),
               letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 5,
-                    backgroundColor: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : OrbitColors.warmGray100,
-                    valueColor: AlwaysStoppedAnimation(colorScheme.primary),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                percentage,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 4,
+              backgroundColor: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : const Color(0xFFEFE8E2),
+              valueColor: const AlwaysStoppedAnimation(OrbitColors.copper500),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+/// Painter for the dashed orbital trajectory line under day selector
+class _CurvedDayArcPainter extends CustomPainter {
+  final bool isDark;
+
+  _CurvedDayArcPainter({required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    final start = Offset(16, size.height * 0.45);
+    final control = Offset(size.width / 2, size.height * 0.95);
+    final end = Offset(size.width - 16, size.height * 0.45);
+
+    path.moveTo(start.dx, start.dy);
+    path.quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
+
+    final paint = Paint()
+      ..color = (isDark ? Colors.white : const Color(0xFF171514)).withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    // Draw thin dashed curve line
+    final metrics = path.computeMetrics();
+    for (final metric in metrics) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final len = (distance + 4.0) > metric.length ? (metric.length - distance) : 4.0;
+        final extractPath = metric.extractPath(distance, distance + len);
+        canvas.drawPath(extractPath, paint);
+        distance += len + 5.0;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurvedDayArcPainter oldDelegate) => false;
 }

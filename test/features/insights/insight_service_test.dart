@@ -27,13 +27,7 @@ import 'package:orbit_v2/features/health/data/health_repository.dart';
 import 'package:orbit_v2/features/health/domain/health_metrics.dart';
 import 'package:orbit_v2/features/goals/data/goal_repository.dart';
 import 'package:orbit_v2/features/goals/domain/goal.dart';
-import 'package:orbit_v2/features/integrations/strava/domain/repositories/i_strava_repository.dart';
-import 'package:orbit_v2/features/integrations/strava/domain/entities/strava_activity.dart';
-
-import 'package:orbit_v2/shared/providers/repository_providers.dart';
 import 'package:orbit_v2/features/score/presentation/providers/score_providers.dart';
-import 'package:orbit_v2/features/health/presentation/providers/health_providers.dart';
-import 'package:orbit_v2/features/integrations/strava/presentation/providers/strava_providers.dart';
 
 class FakeScoreService implements ScoreService {
   @override
@@ -241,11 +235,9 @@ class FakeGoalRepository implements GoalRepository {
   List<Goal> goals = [];
   @override
   Future<List<Goal>> getGoalsForDate(DateTime date) async => goals;
-  @override
   Future<List<Goal>> getAllGoals() async => goals;
   @override
   Future<void> saveGoal(Goal goal) async {}
-  @override
   Future<void> deleteGoal(Goal goal) async {}
   @override
   Stream<void> watchGoals() => Stream.value(null);
