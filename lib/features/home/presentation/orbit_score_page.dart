@@ -378,9 +378,9 @@ class OrbitScorePage extends ConsumerWidget {
                     const SizedBox(width: 12),
                     SizedBox(
                       width: 32,
-                      alignment: Alignment.centerRight,
                       child: Text(
                         '${m.pct}%',
+                        textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -404,7 +404,7 @@ class OrbitScorePage extends ConsumerWidget {
   /// 2x2 Category Grid driven strictly by real provider state.
   Widget _buildCategoryGrid(BuildContext context, dynamic state, bool isDark) {
     final tasksTotal = (state.tasksCompleted + state.tasksRemaining);
-    final tasksValStr = '$state.tasksCompleted / $tasksTotal';
+    final tasksValStr = '${state.tasksCompleted} / $tasksTotal';
     final tasksPct = tasksTotal > 0
         ? (state.tasksCompleted / tasksTotal * 100).toInt()
         : 0;
