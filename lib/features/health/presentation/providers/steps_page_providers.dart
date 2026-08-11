@@ -32,8 +32,8 @@ final weeklyStepsProvider = FutureProvider<List<DailyStepEntry>>((ref) async {
   return entries;
 });
 
-/// Provider for step comparison (% change vs last week).
-final stepsComparisonProvider = FutureProvider<double>((ref) async {
+/// Provider for step comparison (% change vs last week). Returns null if no baseline.
+final stepsComparisonProvider = FutureProvider<double?>((ref) async {
   final repo = ref.watch(healthRepoProvider);
   ref.watch(productivityDataChangesProvider);
 
@@ -49,8 +49,40 @@ final stepsComparisonProvider = FutureProvider<double>((ref) async {
   final lastWeekLog = await repo.getStepsForDate(lastWeekDate);
   final lastWeekSteps = lastWeekLog?.count ?? 0;
 
-  if (lastWeekSteps == 0) return 0.0;
+  if (lastWeekSteps == 0 || todaySteps == 0) return null;
   return ((todaySteps - lastWeekSteps) / lastWeekSteps) * 100;
+});
+
+/// Provider for 30 days of monthly step data.
+final monthlyStepsProvider = FutureProvider<List<DailyStepEntry>>((ref) async {
+  final repo = ref.watch(healthRepoProvider);
+  ref.watch(productivityDataChangesProvider);
+
+  final now = DateTime.now();
+  final end = DateTime(now.year, now.month, now.day);
+  final start = end.subtract(const Duration(days: 29)); // 30 days total
+
+  final logs = await repo.getStepLogsForDateRange(start, end);
+  final Map<String, dynamic> logMap = {
+    for (var log in logs) '${log.date.year}-${log.date.month}-${log.date.day}': log
+  };
+
+  final List<DailyStepEntry> entries = [];
+  for (int i = 0; i < 30; i++) {
+    final d = start.add(Duration(days: i));
+    final key = '${d.year}-${d.month}-${d.day}';
+    final log = logMap[key];
+
+    entries.add(DailyStepEntry(
+      date: d,
+      steps: log?.count ?? 0,
+      distance: log?.distance ?? 0,
+      activeMinutes: log?.activeMinutes ?? 0,
+      calories: log?.calories ?? 0,
+    ));
+  }
+
+  return entries;
 });
 
 /// Simple data class for daily step entry.

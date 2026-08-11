@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 import '../../domain/entities/strava_activity.dart';
 import '../../domain/entities/strava_auth_state.dart';
+import '../../domain/entities/strava_auth_token.dart';
 import '../../domain/repositories/i_strava_repository.dart';
 import '../../domain/services/i_strava_auth_service.dart';
 import '../datasources/strava_api_client.dart';
@@ -116,18 +117,27 @@ class StravaRepositoryImpl implements IStravaRepository {
       return syncedCount;
     } catch (e) {
       debugPrint('[STRAVA_REPO] Sync failed: $e');
-      final token = await _authService.getValidToken();
-      if (token != null) {
-        // If we have a valid token, we are still "connected" but in an error state for the sync
-        await _updateIntegrationStatus(
-          IntegrationStatus.connected,
-          errorMessage: 'Sync failed: $e',
-        );
-      } else {
+      if (e is StravaAuthException) {
         await _updateIntegrationStatus(
           IntegrationStatus.error,
-          errorMessage: e.toString(),
+          errorMessage: 'Authentication error: ${e.message}',
         );
+      } else {
+        StravaAuthToken? token;
+        try {
+          token = await _authService.getValidToken();
+        } catch (_) {}
+        if (token != null) {
+          await _updateIntegrationStatus(
+            IntegrationStatus.connected,
+            errorMessage: 'Sync failed: $e',
+          );
+        } else {
+          await _updateIntegrationStatus(
+            IntegrationStatus.error,
+            errorMessage: e.toString(),
+          );
+        }
       }
       rethrow;
     }

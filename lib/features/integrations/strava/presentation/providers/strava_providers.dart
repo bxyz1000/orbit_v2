@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:orbit_v2/shared/providers/repository_providers.dart';
 import 'package:orbit_v2/features/integrations/presentation/providers/integration_providers.dart';
 import 'package:orbit_v2/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:orbit_v2/features/integrations/domain/entities/integration.dart';
 import '../../domain/entities/strava_activity.dart';
 import '../../domain/entities/strava_auth_state.dart';
 import '../../domain/repositories/i_strava_repository.dart';
@@ -129,6 +130,19 @@ class StravaAuthNotifier extends Notifier<void> {
       ref.invalidate(dashboardProvider);
     } catch (e) {
       debugPrint('[STRAVA_AUTH] ERR failed to complete connection: $e');
+      try {
+        final integrationRepo = ref.read(integrationRepositoryProvider);
+        await integrationRepo.updateIntegration(
+          Integration(
+            id: 'strava',
+            name: 'Strava',
+            status: IntegrationStatus.error,
+            metadata: {'errorMessage': 'Authentication failed: $e'},
+            isSupported: true,
+          ),
+        );
+        ref.invalidate(stravaAuthStateStreamProvider);
+      } catch (_) {}
     }
   }
 }

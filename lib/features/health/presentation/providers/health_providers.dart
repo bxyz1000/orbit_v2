@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit_v2/features/health/domain/entities/health_snapshot.dart';
+import 'package:orbit_v2/features/health/domain/entities/health_sample.dart';
+import 'package:orbit_v2/features/health/domain/health_metrics.dart';
 import 'package:orbit_v2/features/health/domain/repositories/i_health_service.dart';
 import 'package:orbit_v2/features/health/data/services/health_service_impl.dart';
 import 'package:orbit_v2/features/health/data/health_repository.dart';
@@ -110,8 +112,9 @@ final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
   // Watch for Isar changes to trigger UI update when sync completes
   ref.watch(productivityDataChangesProvider);
 
-  // Read latest from Isar
+  // Read latest from Isar & Service
   final repo = ref.watch(healthRepoProvider);
+  final service = ref.watch(healthServiceProvider);
   
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
@@ -126,8 +129,16 @@ final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
   final latestStepLog = await repo.getStepsForDate(startOfDay);
   final sleepLog = await repo.getSleepForDate(startOfDay);
   final workouts = await repo.getWorkoutsForDate(startOfDay);
-  
   final workoutMinutes = workouts.fold<int>(0, (sum, w) => sum + w.durationMinutes);
+
+  // Fetch live snapshot for heart rate metrics
+  double? avgHeartRate;
+  double? restingHeartRate;
+  try {
+    final liveSnapshot = await service.getHealthSnapshot(now);
+    avgHeartRate = liveSnapshot.avgHeartRate;
+    restingHeartRate = liveSnapshot.restingHeartRate;
+  } catch (_) {}
 
   final snapshot = HealthSnapshot(
     steps: latestStepLog?.count ?? 0,
@@ -136,9 +147,55 @@ final todayHealthSnapshotProvider = FutureProvider<HealthSnapshot>((ref) async {
     activeMinutes: latestStepLog?.activeMinutes ?? 0,
     sleepMinutes: sleepLog?.durationMinutes ?? 0,
     workoutMinutes: workoutMinutes,
+    avgHeartRate: avgHeartRate,
+    restingHeartRate: restingHeartRate,
     timestamp: DateTime.now(),
   );
   
   debugPrint('[HEALTH] snapshot data from repository: steps=${snapshot.steps}');
   return snapshot;
 });
+
+enum HealthMetricStatus { available, loading, notConnected, permissionRequired, noData, error }
+
+final todayHeartRateSamplesProvider = FutureProvider<List<HeartRateSample>>((ref) async {
+  final isAuthorized = await ref.watch(healthAuthorizationProvider.future);
+  if (!isAuthorized) return [];
+  final repo = ref.watch(healthRepoProvider);
+  return await repo.getHeartRateSamples(DateTime.now());
+});
+
+final todayHourlyStepsProvider = FutureProvider<List<double>>((ref) async {
+  final isAuthorized = await ref.watch(healthAuthorizationProvider.future);
+  if (!isAuthorized) return List.filled(24, 0.0);
+  final service = ref.watch(healthServiceProvider);
+  return await service.getHourlyStepIntensity(DateTime.now());
+});
+
+final stepHistoryProvider = FutureProvider.family<List<StepLog>, int>((ref, days) async {
+  final repo = ref.watch(healthRepoProvider);
+  ref.watch(productivityDataChangesProvider);
+  final now = DateTime.now();
+  final end = DateTime(now.year, now.month, now.day);
+  final start = end.subtract(Duration(days: days - 1));
+  return await repo.getStepLogsForDateRange(start, end);
+});
+
+final sleepHistoryProvider = FutureProvider.family<List<SleepLog>, int>((ref, days) async {
+  final repo = ref.watch(healthRepoProvider);
+  ref.watch(productivityDataChangesProvider);
+  final now = DateTime.now();
+  final end = DateTime(now.year, now.month, now.day);
+  final start = end.subtract(Duration(days: days - 1));
+  return await repo.getSleepLogsForDateRange(start, end);
+});
+
+final workoutHistoryProvider = FutureProvider.family<List<WorkoutLog>, int>((ref, days) async {
+  final repo = ref.watch(healthRepoProvider);
+  ref.watch(productivityDataChangesProvider);
+  final now = DateTime.now();
+  final end = DateTime(now.year, now.month, now.day);
+  final start = end.subtract(Duration(days: days - 1));
+  return await repo.getWorkoutLogsForDateRange(start, end);
+});
+

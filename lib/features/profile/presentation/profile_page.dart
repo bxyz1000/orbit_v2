@@ -343,9 +343,21 @@ class ProfilePage extends ConsumerWidget {
     bool isDark,
   ) {
     final isHealthConnected = healthAuthAsync.asData?.value ?? false;
-    final stravaState = stravaStateAsync.asData?.value;
-    final isStravaConnected = stravaState?.status == StravaConnectionStatus.connected ||
-        stravaState?.status == StravaConnectionStatus.syncing;
+    final stravaStatus = stravaState?.status ?? StravaConnectionStatus.notConnected;
+    final isStravaConnected = stravaStatus == StravaConnectionStatus.connected ||
+        stravaStatus == StravaConnectionStatus.syncing;
+    final isStravaError = stravaStatus == StravaConnectionStatus.error;
+
+    String stravaSubtitle;
+    if (isStravaError) {
+      stravaSubtitle = stravaState?.errorMessage ?? 'Authentication required';
+    } else if (stravaStatus == StravaConnectionStatus.syncing) {
+      stravaSubtitle = 'Syncing...';
+    } else if (isStravaConnected) {
+      stravaSubtitle = 'Connected (${stravaState?.athleteName ?? 'User'})';
+    } else {
+      stravaSubtitle = 'Activity & workout sync';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,22 +384,27 @@ class ProfilePage extends ConsumerWidget {
             OrbitInfoTile(
               icon: Icons.directions_run_outlined,
               title: 'Strava',
-              subtitle: isStravaConnected
-                  ? 'Connected (${stravaState?.athleteName ?? 'User'})'
-                  : 'Activity & workout sync',
-              trailing: isStravaConnected
+              subtitle: stravaSubtitle,
+              trailing: isStravaError
                   ? TextButton(
-                      onPressed: () async {
-                        await ref.read(stravaSyncNotifierProvider.notifier).disconnect();
-                      },
-                      child: const Text('Disconnect', style: TextStyle(color: Colors.redAccent)),
-                    )
-                  : TextButton(
                       onPressed: () async {
                         await ref.read(stravaAuthNotifierProvider.notifier).connect();
                       },
-                      child: const Text('Connect'),
-                    ),
+                      child: const Text('Reconnect', style: TextStyle(color: OrbitColors.copper500)),
+                    )
+                  : (isStravaConnected
+                      ? TextButton(
+                          onPressed: () async {
+                            await ref.read(stravaSyncNotifierProvider.notifier).disconnect();
+                          },
+                          child: const Text('Disconnect', style: TextStyle(color: Colors.redAccent)),
+                        )
+                      : TextButton(
+                          onPressed: () async {
+                            await ref.read(stravaAuthNotifierProvider.notifier).connect();
+                          },
+                          child: const Text('Connect'),
+                        )),
             ),
           ],
         ),

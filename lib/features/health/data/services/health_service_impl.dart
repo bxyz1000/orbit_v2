@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import '../../domain/entities/health_snapshot.dart';
+import '../../domain/entities/health_sample.dart';
 import '../../domain/repositories/i_health_service.dart';
 
 class HealthServiceImpl implements IHealthService {
@@ -9,9 +11,13 @@ class HealthServiceImpl implements IHealthService {
   final List<HealthDataType> _types = [
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.TOTAL_CALORIES_BURNED,
     HealthDataType.DISTANCE_DELTA,
     HealthDataType.SLEEP_SESSION,
     HealthDataType.WORKOUT,
+    HealthDataType.HEART_RATE,
+    HealthDataType.RESTING_HEART_RATE,
+    HealthDataType.EXERCISE_TIME,
   ];
 
   @override
@@ -63,25 +69,26 @@ class HealthServiceImpl implements IHealthService {
     final endTime = isToday ? now : midnight.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
 
     debugPrint('[HEALTH] sync started for range: $midnight to $endTime');
-    debugPrint('[HEALTH] requested types: $_types');
 
     int steps = 0;
     double calories = 0;
+    double? totalCalories;
     double distance = 0;
     int activeMinutes = 0;
     int sleepMinutes = 0;
     int workoutMinutes = 0;
 
+    double heartRateSum = 0;
+    int heartRateCount = 0;
+    double? restingHeartRate;
+
     try {
-      debugPrint('[HEALTH] configure started');
       await _health.configure();
-      debugPrint('[HEALTH] configure completed');
 
       // 1. Total Steps
       try {
         final stepsCount = await _health.getTotalStepsInInterval(midnight, endTime);
         steps = stepsCount ?? 0;
-        debugPrint('[HEALTH] getTotalStepsInInterval result: $steps');
       } catch (e, stack) {
         debugPrint('[HEALTH] ERR getTotalStepsInInterval failed: $e');
         debugPrint('[HEALTH] Stack: $stack');
@@ -101,18 +108,11 @@ class HealthServiceImpl implements IHealthService {
         rethrow;
       }
 
-      
-      debugPrint('[HEALTH] health records returned: ${data.length}');
-
-      if (data.isEmpty) {
-        debugPrint('[HEALTH] NO RECORDS RETURNED for specified types and range ($midnight to $endTime)');
-      }
-
       int stepsFromPoints = 0;
       for (var point in data) {
         final type = point.type;
         final value = point.value;
-        
+
         switch (type) {
           case HealthDataType.STEPS:
             final s = int.tryParse(value.toString()) ?? 0;
@@ -120,6 +120,9 @@ class HealthServiceImpl implements IHealthService {
             break;
           case HealthDataType.ACTIVE_ENERGY_BURNED:
             calories += (double.tryParse(value.toString()) ?? 0.0);
+            break;
+          case HealthDataType.TOTAL_CALORIES_BURNED:
+            totalCalories = (totalCalories ?? 0.0) + (double.tryParse(value.toString()) ?? 0.0);
             break;
           case HealthDataType.DISTANCE_DELTA:
             distance += (double.tryParse(value.toString()) ?? 0.0);
@@ -135,32 +138,115 @@ class HealthServiceImpl implements IHealthService {
             final dur = point.dateTo.difference(point.dateFrom).inMinutes;
             workoutMinutes += dur;
             break;
+          case HealthDataType.HEART_RATE:
+            final bpm = double.tryParse(value.toString()) ?? 0.0;
+            if (bpm > 0) {
+              heartRateSum += bpm;
+              heartRateCount++;
+            }
+            break;
+          case HealthDataType.RESTING_HEART_RATE:
+            final rBpm = double.tryParse(value.toString()) ?? 0.0;
+            if (rBpm > 0) {
+              restingHeartRate = rBpm;
+            }
+            break;
           default:
             break;
         }
       }
 
       if (steps == 0 && stepsFromPoints > 0) {
-        debugPrint('[HEALTH] getTotalStepsInInterval was 0, using sum of points: $stepsFromPoints');
         steps = stepsFromPoints;
       }
-
-      debugPrint('[HEALTH] steps returned: $steps');
-      debugPrint('[HEALTH] snapshot details: calories=$calories, distance=$distance, activeMins=$activeMinutes, sleepMins=$sleepMinutes, workoutMins=$workoutMinutes');
-
     } catch (e, stack) {
       debugPrint('[HEALTH] FATAL Retrieval failed: $e');
       debugPrint('[HEALTH] Stack: $stack');
     }
 
+    final double? avgHeartRate = heartRateCount > 0 ? (heartRateSum / heartRateCount) : null;
+
     return HealthSnapshot(
       steps: steps,
       calories: calories,
+      totalCalories: totalCalories != null && totalCalories > 0 ? totalCalories : (calories > 0 ? calories : null),
       distance: distance,
       activeMinutes: activeMinutes,
       sleepMinutes: sleepMinutes,
       workoutMinutes: workoutMinutes,
+      avgHeartRate: avgHeartRate,
+      restingHeartRate: restingHeartRate,
       timestamp: now,
     );
+  }
+
+  @override
+  Future<List<HeartRateSample>> getHeartRateSamples(DateTime date) async {
+    final midnight = DateTime(date.year, date.month, date.day, 0, 0, 0);
+    final endTime = midnight.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+
+    final List<HeartRateSample> samples = [];
+
+    try {
+      await _health.configure();
+      final data = await _health.getHealthDataFromTypes(
+        startTime: midnight,
+        endTime: endTime,
+        types: [HealthDataType.HEART_RATE, HealthDataType.RESTING_HEART_RATE],
+      );
+
+      for (var point in data) {
+        final bpm = double.tryParse(point.value.toString()) ?? 0.0;
+        if (bpm > 0) {
+          samples.add(HeartRateSample(
+            timestamp: point.dateFrom,
+            bpm: bpm,
+            isResting: point.type == HealthDataType.RESTING_HEART_RATE,
+          ));
+        }
+      }
+      samples.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    } catch (e) {
+      debugPrint('[HEALTH] getHeartRateSamples error: $e');
+    }
+
+    return samples;
+  }
+
+  @override
+  Future<List<double>> getHourlyStepIntensity(DateTime date) async {
+    final midnight = DateTime(date.year, date.month, date.day, 0, 0, 0);
+    final now = DateTime.now();
+    final isToday = date.day == now.day && date.month == now.month && date.year == now.year;
+    final endTime = isToday ? now : midnight.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+
+    final List<int> hourlySteps = List.filled(24, 0);
+
+    try {
+      await _health.configure();
+      final data = await _health.getHealthDataFromTypes(
+        startTime: midnight,
+        endTime: endTime,
+        types: [HealthDataType.STEPS],
+      );
+
+      for (var point in data) {
+        final hour = point.dateFrom.hour;
+        if (hour >= 0 && hour < 24) {
+          final count = int.tryParse(point.value.toString()) ?? 0;
+          hourlySteps[hour] += count;
+        }
+      }
+    } catch (e) {
+      debugPrint('[HEALTH] getHourlyStepIntensity error: $e');
+    }
+
+    final maxHourly = hourlySteps.fold<int>(0, (max, count) => count > max ? count : max);
+    if (maxHourly == 0) {
+      return List.filled(24, 0.0);
+    }
+
+    final double ceiling = math.max(maxHourly.toDouble(), 1000.0);
+    return hourlySteps.map((count) => (count / ceiling).clamp(0.0, 1.0)).toList();
   }
 }

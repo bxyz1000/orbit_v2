@@ -370,10 +370,45 @@ class OrbitFeatureHubPage extends ConsumerWidget {
     AsyncValue stravaActivitiesAsync,
   ) {
     final stravaState = stravaStateAsync.asData?.value;
-    final isConnected = stravaState?.status == StravaConnectionStatus.connected ||
-        stravaState?.status == StravaConnectionStatus.syncing;
+    final status = stravaState?.status ?? StravaConnectionStatus.notConnected;
 
-    if (!isConnected) {
+    if (status == StravaConnectionStatus.error) {
+      final errorMsg = stravaState?.errorMessage ?? 'Tap to reconnect';
+      return OrbitFeatureCard(
+        title: 'Strava',
+        metric: 'Auth Error',
+        subtitle: errorMsg,
+        icon: Icons.error_outline_rounded,
+        iconColor: Colors.redAccent,
+        isWide: true,
+        backgroundPainter: StravaRoutePainter(),
+        onTap: () async {
+          try {
+            await ref.read(stravaAuthNotifierProvider.notifier).connect();
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Strava connection: $e')),
+              );
+            }
+          }
+        },
+      );
+    }
+
+    if (status == StravaConnectionStatus.syncing) {
+      return OrbitFeatureCard(
+        title: 'Strava',
+        metric: 'Syncing...',
+        subtitle: 'Fetching activities',
+        icon: Icons.directions_run_rounded,
+        iconColor: OrbitColors.copper500,
+        isWide: true,
+        backgroundPainter: StravaRoutePainter(),
+      );
+    }
+
+    if (status == StravaConnectionStatus.notConnected) {
       return OrbitFeatureCard(
         title: 'Strava',
         metric: 'Not Connected',
@@ -396,12 +431,36 @@ class OrbitFeatureHubPage extends ConsumerWidget {
       );
     }
 
+    // Connected state
     return stravaActivitiesAsync.when(
       data: (activities) {
         final activityList = activities as List;
-        final latest = activityList.isNotEmpty ? activityList.first : null;
-        final distanceKm = latest != null ? (latest.distanceMeters / 1000).toStringAsFixed(2) : '0.00';
-        final titleText = latest != null ? latest.name : 'No recent activities';
+        if (activityList.isEmpty) {
+          return OrbitFeatureCard(
+            title: 'Strava',
+            metric: 'No activities',
+            subtitle: 'No recent activities',
+            icon: Icons.directions_run_rounded,
+            iconColor: OrbitColors.copper500,
+            isWide: true,
+            backgroundPainter: StravaRoutePainter(),
+            onTap: () async {
+              try {
+                await ref.read(stravaSyncNotifierProvider.notifier).sync();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Strava sync: $e')),
+                  );
+                }
+              }
+            },
+          );
+        }
+
+        final latest = activityList.first;
+        final distanceKm = (latest.distanceMeters / 1000).toStringAsFixed(2);
+        final titleText = '${latest.name} (${latest.type})';
 
         return OrbitFeatureCard(
           title: 'Strava',
@@ -413,11 +472,11 @@ class OrbitFeatureHubPage extends ConsumerWidget {
           backgroundPainter: StravaRoutePainter(),
           onTap: () async {
             try {
-              await ref.read(stravaAuthNotifierProvider.notifier).connect();
+              await ref.read(stravaSyncNotifierProvider.notifier).sync();
             } catch (e) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Strava connection: $e')),
+                  SnackBar(content: Text('Strava sync: $e')),
                 );
               }
             }
@@ -427,17 +486,29 @@ class OrbitFeatureHubPage extends ConsumerWidget {
       loading: () => OrbitFeatureCard(
         title: 'Strava',
         metric: 'Syncing...',
+        subtitle: 'Loading activities',
         icon: Icons.directions_run_rounded,
         isWide: true,
         backgroundPainter: StravaRoutePainter(),
       ),
-      error: (_, __) => OrbitFeatureCard(
+      error: (err, _) => OrbitFeatureCard(
         title: 'Strava',
         metric: 'Connected',
         subtitle: 'Tap to sync workouts',
         icon: Icons.directions_run_rounded,
         isWide: true,
         backgroundPainter: StravaRoutePainter(),
+        onTap: () async {
+          try {
+            await ref.read(stravaSyncNotifierProvider.notifier).sync();
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Strava sync: $e')),
+              );
+            }
+          }
+        },
       ),
     );
   }

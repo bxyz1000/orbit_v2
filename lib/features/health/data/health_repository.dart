@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 import '../domain/health_metrics.dart';
+import '../domain/entities/health_sample.dart';
 import '../domain/repositories/i_health_service.dart';
 
 class HealthRepository {
@@ -80,6 +81,52 @@ class HealthRepository {
       }
     });
     debugPrint('[HEALTH] repository write completed');
+  }
+
+  Future<List<StepLog>> getStepLogsForDateRange(DateTime start, DateTime end) async {
+    final sDate = DateTime(start.year, start.month, start.day);
+    final eDate = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+    final list = await _isar.stepLogs
+        .filter()
+        .dateGreaterThan(sDate.subtract(const Duration(milliseconds: 1)))
+        .and()
+        .dateLessThan(eDate)
+        .findAll();
+    list.sort((a, b) => a.date.compareTo(b.date));
+    return list;
+  }
+
+  Future<List<SleepLog>> getSleepLogsForDateRange(DateTime start, DateTime end) async {
+    final sDate = DateTime(start.year, start.month, start.day);
+    final eDate = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+    final list = await _isar.sleepLogs
+        .filter()
+        .dateGreaterThan(sDate.subtract(const Duration(milliseconds: 1)))
+        .and()
+        .dateLessThan(eDate)
+        .findAll();
+    list.sort((a, b) => a.date.compareTo(b.date));
+    return list;
+  }
+
+  Future<List<WorkoutLog>> getWorkoutLogsForDateRange(DateTime start, DateTime end) async {
+    final sDate = DateTime(start.year, start.month, start.day);
+    final eDate = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+    final list = await _isar.workoutLogs
+        .filter()
+        .dateGreaterThan(sDate.subtract(const Duration(milliseconds: 1)))
+        .and()
+        .dateLessThan(eDate)
+        .findAll();
+    list.sort((a, b) => a.date.compareTo(b.date));
+    return list;
+  }
+
+  Future<List<HeartRateSample>> getHeartRateSamples(DateTime date) async {
+    if (_healthService == null) return [];
+    final isAuth = await _healthService.isAuthorized();
+    if (!isAuth) return [];
+    return await _healthService.getHeartRateSamples(date);
   }
 
   Future<void> saveSteps(StepLog log) async {

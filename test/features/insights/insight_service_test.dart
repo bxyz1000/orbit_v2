@@ -7,6 +7,7 @@ import 'package:orbit_v2/features/insights/domain/entities/insight_type.dart';
 import 'package:orbit_v2/features/insights/domain/entities/orbit_insight.dart';
 import 'package:orbit_v2/features/insights/presentation/providers/insight_providers.dart';
 
+import 'package:orbit_v2/features/health/domain/entities/health_sample.dart';
 import 'package:orbit_v2/features/score/domain/entities/daily_score.dart';
 import 'package:orbit_v2/features/score/domain/entities/weekly_score.dart';
 import 'package:orbit_v2/features/score/domain/entities/monthly_score.dart';
@@ -229,6 +230,14 @@ class FakeHealthRepository implements HealthRepository {
   Stream<void> watchWorkouts() => Stream.value(null);
   @override
   Stream<void> watchSleep() => Stream.value(null);
+  @override
+  Future<List<HeartRateSample>> getHeartRateSamples(DateTime date) async => [];
+  @override
+  Future<List<StepLog>> getStepLogsForDateRange(DateTime start, DateTime end) async => steps != null ? [steps!] : [];
+  @override
+  Future<List<SleepLog>> getSleepLogsForDateRange(DateTime start, DateTime end) async => sleep != null ? [sleep!] : [];
+  @override
+  Future<List<WorkoutLog>> getWorkoutLogsForDateRange(DateTime start, DateTime end) async => workouts;
 }
 
 class FakeGoalRepository implements GoalRepository {

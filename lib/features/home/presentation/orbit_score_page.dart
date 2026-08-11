@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../core/theme/orbit_typography.dart';
 import '../../../core/theme/orbit_gradients.dart';
 import '../../../shared/widgets/orbit_hero_score.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
-import '../../../shared/providers/data_providers.dart';
 import '../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
 import '../../settings/presentation/providers/preferences_providers.dart';
@@ -88,11 +86,11 @@ class OrbitScorePage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── Top: Curved Orbital Day Selector ───
+                    _buildHeader(context, greeting, userName, isDark),
+                    const SizedBox(height: 14),
                     _buildCurvedDaySelector(context, isDark),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // ─── Hero Orbit Score Arc Meter ───
                     Center(
                       child: OrbitHeroScore(
                         score: state.orbitScore.totalScore,
@@ -103,17 +101,11 @@ class OrbitScorePage extends ConsumerWidget {
                         motivationSubtitle: motivationSubtitle,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 22),
 
-                    // ─── 2x2 Category Metrics Grid ───
                     _buildCategoryGrid(context, state, isDark),
                     const SizedBox(height: 18),
 
-                    // ─── Today's Performance Section ───
-                    _buildTodaysPerformanceSection(context, state, isDark),
-                    const SizedBox(height: 16),
-
-                    // ─── Today's Insight Section ───
                     _buildInsightsSection(context, ref, isDark),
                   ],
                 ),
@@ -156,6 +148,96 @@ class OrbitScorePage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    String greeting,
+    String userName,
+    bool isDark,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$greeting,',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface.withValues(alpha: 0.72),
+                height: 1.1,
+              ),
+            ),
+            Text(
+              userName,
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+                letterSpacing: -0.7,
+                height: 1.02,
+              ),
+            ),
+          ],
+        ),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? const [Color(0xFF4B403A), Color(0xFF1C1816)]
+                      : const [Color(0xFFE8DED5), Color(0xFFD7C8BC)],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.75),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: OrbitColors.copper500.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.person_rounded,
+                size: 24,
+                color: isDark ? Colors.white : OrbitColors.warmGray800,
+              ),
+            ),
+            Positioned(
+              top: 2,
+              right: -1,
+              child: Container(
+                width: 11,
+                height: 11,
+                decoration: BoxDecoration(
+                  color: OrbitColors.copper500,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark ? OrbitColors.darkBackground : OrbitColors.warmWhite,
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -272,125 +354,6 @@ class OrbitScorePage extends ConsumerWidget {
               );
             }),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTodaysPerformanceSection(BuildContext context, dynamic state, bool isDark) {
-    final tasksTotal = (state.tasksCompleted + state.tasksRemaining);
-    final tasksPct = tasksTotal > 0
-        ? (state.tasksCompleted / tasksTotal * 100).toInt().clamp(0, 100)
-        : 0;
-
-    final focusMin = state.focusMinutesCompleted;
-    final focusPct = state.focusMinutesTarget > 0
-        ? (focusMin / state.focusMinutesTarget * 100).toInt().clamp(0, 100)
-        : 0;
-
-    final goalsTotal = state.goalsCompleted + state.goalsRemaining;
-    final habitsPct = goalsTotal > 0
-        ? (state.goalsCompleted / goalsTotal * 100).toInt().clamp(0, 100)
-        : 0;
-
-    const dailyStepGoal = 10000;
-    final healthPct = (state.healthSteps / dailyStepGoal * 100).toInt().clamp(0, 100);
-
-    final metrics = [
-      (title: 'Tasks', pct: tasksPct),
-      (title: 'Focus', pct: focusPct),
-      (title: 'Habits', pct: habitsPct),
-      (title: 'Health', pct: healthPct),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? OrbitColors.darkElevated : const Color(0xFFFAF6F2),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.04),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'TODAY\'S PERFORMANCE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                  color: Color(0xFF78716C),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: OrbitColors.copper500.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Optimal',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: OrbitColors.copper500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...metrics.map((m) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 55,
-                      child: Text(
-                        m.title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : const Color(0xFF171514),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: (m.pct / 100).clamp(0.0, 1.0),
-                          minHeight: 6,
-                          backgroundColor: isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : const Color(0xFFEFE8E2),
-                          valueColor: const AlwaysStoppedAnimation(OrbitColors.copper500),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      width: 32,
-                      child: Text(
-                        '${m.pct}%',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white60 : const Color(0xFF78716C),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
         ],
       ),
     );

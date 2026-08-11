@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../core/theme/orbit_typography.dart';
 import '../../../core/theme/orbit_shadows.dart';
 import '../../../shared/widgets/orbit_period_selector.dart';
 import '../../../shared/widgets/orbit_activity_grid.dart';
-import '../../../shared/widgets/orbit_weekly_steps_chart.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
 import '../../health/presentation/providers/health_providers.dart';
 import '../../health/presentation/providers/steps_page_providers.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
+import 'widgets/orbit_heart_rate_card.dart';
+import 'widgets/orbit_sleep_card.dart';
+import 'widgets/orbit_calories_card.dart';
+import 'widgets/orbit_activity_card.dart';
 
-/// RIGHT PAGE — Steps experience displaying real health & step data.
+/// RIGHT PAGE — Steps analytics experience displaying real personal performance metrics.
 class OrbitStepsPage extends ConsumerStatefulWidget {
   const OrbitStepsPage({super.key});
 
@@ -29,99 +31,219 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     final healthAsync = ref.watch(todayHealthSnapshotProvider);
     final comparisonAsync = ref.watch(stepsComparisonProvider);
     final weeklyAsync = ref.watch(weeklyStepsProvider);
+    final monthlyAsync = ref.watch(monthlyStepsProvider);
+    final todayHourlyAsync = ref.watch(todayHourlyStepsProvider);
     final insightsAsync = ref.watch(dailyInsightsProvider);
-    final colorScheme = Theme.of(context).colorScheme;
+
+    final heartSamplesAsync = ref.watch(todayHeartRateSamplesProvider);
+    final sleepHistoryAsync = ref.watch(sleepHistoryProvider(7));
+    final stepHistoryAsync = ref.watch(stepHistoryProvider(7));
+    final workoutHistoryAsync = ref.watch(workoutHistoryProvider(7));
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final isAuthorized = healthAuthAsync.asData?.value ?? false;
+    final metricStatus = isAuthorized ? HealthMetricStatus.available : HealthMetricStatus.notConnected;
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: OrbitSpacing.pagePadding,
-        right: OrbitSpacing.pagePadding,
-        bottom: MediaQuery.of(context).padding.bottom + 110,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── Header: Back Button + Title + Settings Gear ───
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final hourlyIntensity = todayHourlyAsync.asData?.value ?? List.filled(24, 0.0);
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? const [OrbitColors.darkBackground, OrbitColors.darkSurface]
+                    : const [Color(0xFFFFFAF7), Color(0xFFFFF2EA)],
+              ),
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: OrbitSpacing.pagePadding,
+            right: OrbitSpacing.pagePadding,
+            bottom: MediaQuery.of(context).padding.bottom + 110,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isDark ? OrbitColors.darkElevated : OrbitColors.warmGray100,
-                  shape: BoxShape.circle,
+              _buildHeader(context, isDark),
+              const SizedBox(height: 22),
+
+              if (!isAuthorized) ...[
+                _buildDisconnectedBanner(context, ref),
+                const SizedBox(height: 18),
+              ],
+
+              OrbitPeriodSelector(
+                selectedIndex: _periodIndex,
+                onChanged: (i) => setState(() => _periodIndex = i),
+              ),
+              const SizedBox(height: 26),
+
+              if (_periodIndex == 0) ...[
+                _buildDayView(
+                  context,
+                  healthAsync,
+                  comparisonAsync,
+                  hourlyIntensity,
+                  isDark,
                 ),
-                child: Icon(
-                  Icons.chevron_left_rounded,
-                  size: 22,
-                  color: colorScheme.onSurface,
+              ] else if (_periodIndex == 1) ...[
+                _buildWeekView(context, weeklyAsync, isDark),
+              ] else ...[
+                _buildMonthView(context, monthlyAsync, isDark),
+              ],
+              const SizedBox(height: 24),
+
+              _buildInsights(context, insightsAsync, 'Orbit Insights'),
+              const SizedBox(height: 24),
+
+              _buildHealthSignalsHeader(context),
+              const SizedBox(height: 12),
+              healthAsync.when(
+                data: (snapshot) => OrbitHeartRateCard(
+                  avgHeartRate: snapshot.avgHeartRate,
+                  restingHeartRate: snapshot.restingHeartRate,
+                  samples: heartSamplesAsync.asData?.value ?? [],
+                  status: metricStatus,
+                  onConnectTap: () => _requestHealthAuth(ref),
+                ),
+                loading: () =>
+                    OrbitHeartRateCard(status: HealthMetricStatus.loading),
+                error: (_, __) => OrbitHeartRateCard(status: HealthMetricStatus.error),
+              ),
+              const SizedBox(height: 16),
+              healthAsync.when(
+                data: (snapshot) => OrbitCaloriesCard(
+                  activeCalories: snapshot.calories,
+                  history: stepHistoryAsync.asData?.value ?? [],
+                  status: metricStatus,
+                  onConnectTap: () => _requestHealthAuth(ref),
+                ),
+                loading: () => OrbitCaloriesCard(
+                  activeCalories: 0,
+                  status: HealthMetricStatus.loading,
+                ),
+                error: (_, __) => OrbitCaloriesCard(
+                  activeCalories: 0,
+                  status: HealthMetricStatus.error,
                 ),
               ),
-              Text(
-                'Steps',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: colorScheme.onSurface,
+              const SizedBox(height: 16),
+              healthAsync.when(
+                data: (snapshot) => OrbitSleepCard(
+                  sleepMinutes: snapshot.sleepMinutes,
+                  history: sleepHistoryAsync.asData?.value ?? [],
+                  status: metricStatus,
+                  onConnectTap: () => _requestHealthAuth(ref),
+                ),
+                loading: () => OrbitSleepCard(
+                  sleepMinutes: 0,
+                  status: HealthMetricStatus.loading,
+                ),
+                error: (_, __) => OrbitSleepCard(
+                  sleepMinutes: 0,
+                  status: HealthMetricStatus.error,
                 ),
               ),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isDark ? OrbitColors.darkElevated : OrbitColors.warmGray100,
-                  shape: BoxShape.circle,
+              const SizedBox(height: 16),
+              healthAsync.when(
+                data: (snapshot) => OrbitActivityCard(
+                  activeMinutes: snapshot.activeMinutes,
+                  workoutMinutes: snapshot.workoutMinutes,
+                  distanceMeters: snapshot.distance,
+                  workouts: workoutHistoryAsync.asData?.value ?? [],
+                  status: metricStatus,
+                  onConnectTap: () => _requestHealthAuth(ref),
                 ),
-                child: Icon(
-                  Icons.settings_outlined,
-                  size: 18,
-                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                loading: () => OrbitActivityCard(
+                  activeMinutes: 0,
+                  workoutMinutes: 0,
+                  distanceMeters: 0,
+                  status: HealthMetricStatus.loading,
+                ),
+                error: (_, __) => OrbitActivityCard(
+                  activeMinutes: 0,
+                  workoutMinutes: 0,
+                  distanceMeters: 0,
+                  status: HealthMetricStatus.error,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+        ),
+      ],
+    );
+  }
 
-          // ─── Health Connect Disconnected Banner ───
-          if (!isAuthorized) ...[
-            _buildDisconnectedBanner(context, ref),
-            const SizedBox(height: 20),
-          ],
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
 
-          // ─── Period Selector Toggle ───
-          OrbitPeriodSelector(
-            selectedIndex: _periodIndex,
-            onChanged: (i) => setState(() => _periodIndex = i),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _HeaderIcon(
+          icon: Icons.chevron_left_rounded,
+          isDark: isDark,
+          onTap: () {},
+        ),
+        Text(
+          'Steps',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: colorScheme.onSurface,
+            letterSpacing: -0.3,
           ),
-          const SizedBox(height: 24),
+        ),
+        _HeaderIcon(
+          icon: Icons.settings_rounded,
+          isDark: isDark,
+          onTap: () async {
+            await ref.read(healthSyncNotifierProvider.notifier).sync();
+            ref.invalidate(todayHealthSnapshotProvider);
+            ref.invalidate(todayHeartRateSamplesProvider);
+            ref.invalidate(todayHourlyStepsProvider);
+            ref.invalidate(sleepHistoryProvider(7));
+            ref.invalidate(stepHistoryProvider(7));
+            ref.invalidate(workoutHistoryProvider(7));
+            ref.invalidate(weeklyStepsProvider);
+            ref.invalidate(monthlyStepsProvider);
+            ref.invalidate(stepsComparisonProvider);
+          },
+        ),
+      ],
+    );
+  }
 
-          // ─── Day View ───
-          if (_periodIndex == 0) ...[
-            _buildDayView(context, healthAsync, comparisonAsync, isDark),
-            const SizedBox(height: 24),
-            _buildInsights(context, insightsAsync, 'Today\'s Insight'),
-          ],
+  Widget _buildHealthSignalsHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
 
-          // ─── Week View ───
-          if (_periodIndex == 1) ...[
-            _buildWeekView(context, weeklyAsync, isDark),
-            const SizedBox(height: 28),
-            _buildInsights(context, insightsAsync, 'Orbit Insights'),
-          ],
-
-          // ─── Month View ───
-          if (_periodIndex == 2) ...[
-            _buildMonthView(context, weeklyAsync),
-          ],
-        ],
+    return Text(
+      'More Health Signals',
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: colorScheme.onSurface.withValues(alpha: 0.82),
       ),
     );
+  }
+
+  Future<void> _requestHealthAuth(WidgetRef ref) async {
+    final success = await ref.read(healthServiceProvider).requestAuthorization();
+    if (success) {
+      ref.invalidate(healthAuthorizationProvider);
+      ref.invalidate(todayHealthSnapshotProvider);
+      ref.invalidate(todayHeartRateSamplesProvider);
+      ref.invalidate(todayHourlyStepsProvider);
+    }
   }
 
   Widget _buildDisconnectedBanner(BuildContext context, WidgetRef ref) {
@@ -177,14 +299,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             ),
           ),
           TextButton(
-            onPressed: () async {
-              final success =
-                  await ref.read(healthServiceProvider).requestAuthorization();
-              if (success) {
-                ref.invalidate(healthAuthorizationProvider);
-                ref.invalidate(todayHealthSnapshotProvider);
-              }
-            },
+            onPressed: () => _requestHealthAuth(ref),
             style: TextButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: Colors.white,
@@ -203,7 +318,8 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
   Widget _buildDayView(
     BuildContext context,
     AsyncValue healthAsync,
-    AsyncValue<double> comparisonAsync,
+    AsyncValue<double?> comparisonAsync,
+    List<double> hourlyIntensity,
     bool isDark,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -213,9 +329,9 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
         final stepsVal = snapshot.steps;
         final distanceVal = snapshot.distance;
         final activeMinVal = snapshot.activeMinutes;
-        final comparison = comparisonAsync.asData?.value ?? 0.0;
+        final comparison = comparisonAsync.asData?.value;
 
-        final comparisonText = comparison != 0.0
+        final comparisonText = comparison != null
             ? '${comparison >= 0 ? '↑' : '↓'} ${comparison.abs().toStringAsFixed(1)}% vs last week'
             : 'No weekly baseline';
 
@@ -242,7 +358,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                     },
                   ),
                   Text(
-                    'Steps',
+                    'Steps Today',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -274,7 +390,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             ),
             const SizedBox(height: 24),
 
-            // ─── Activity Grid (Y-axis 0/2K/4K/6K & X-axis 12AM/6AM/12PM/6PM/12AM) ───
+            // ─── Activity Grid (Real Hourly Intensity Pipeline) ───
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -288,8 +404,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                 ),
               ),
               child: OrbitActivityGrid(
-                hourlyIntensity: _calculateHourlyIntensity(stepsVal),
-                maxSteps: 6000,
+                hourlyIntensity: hourlyIntensity,
               ),
             ),
             const SizedBox(height: 12),
@@ -408,7 +523,6 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     );
   }
 
-  /// Week View matching real weekly step entries
   Widget _buildWeekView(
     BuildContext context,
     AsyncValue<List<DailyStepEntry>> weeklyAsync,
@@ -452,7 +566,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                   ),
                 ),
                 Text(
-                  'Avg: ${_formatNumber(avg)}',
+                  avg > 0 ? 'Avg: ${_formatNumber(avg)}' : 'No data recorded',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -463,7 +577,6 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             ),
             const SizedBox(height: 16),
 
-            // Horizontal step bars for 7 days
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -557,52 +670,128 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
   Widget _buildMonthView(
     BuildContext context,
-    AsyncValue<List<DailyStepEntry>> weeklyAsync,
+    AsyncValue<List<DailyStepEntry>> monthlyAsync,
+    bool isDark,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final entries = weeklyAsync.asData?.value ?? [];
-    final totalSteps = entries.fold<int>(0, (sum, e) => sum + e.steps);
-    final avg = entries.isNotEmpty ? totalSteps ~/ entries.length : 0;
+    return monthlyAsync.when(
+      data: (entries) {
+        final totalSteps = entries.fold<int>(0, (sum, e) => sum + e.steps);
+        final activeDays = entries.where((e) => e.steps > 0).length;
+        final avg = activeDays > 0 ? totalSteps ~/ entries.length : 0;
+        int maxSteps = 0;
+        for (var e in entries) {
+          if (e.steps > maxSteps) maxSteps = e.steps;
+        }
 
-    final subtitleStr = avg > 0
-        ? 'Average steps this period: ${_formatNumber(avg)} steps/day'
-        : 'No monthly step data recorded yet';
+        final subtitleStr = totalSteps > 0
+            ? '30-Day Total: ${_formatNumber(totalSteps)} • Avg ${_formatNumber(avg)} steps/day'
+            : 'No monthly step data recorded yet';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.calendar_month_rounded,
-            size: 32,
-            color: colorScheme.onSurface.withValues(alpha: 0.2),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Monthly View',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onSurface,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '30-Day Monthly View',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  '$activeDays / 30 active days',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitleStr,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: colorScheme.onSurface.withValues(alpha: 0.5),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: OrbitShadows.card,
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : OrbitColors.warmGray200.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    subtitleStr,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (totalSteps > 0)
+                    SizedBox(
+                      height: 100,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: entries.map((e) {
+                          final pct = maxSteps > 0 ? (e.steps / maxSteps).clamp(0.0, 1.0) : 0.0;
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 1.0),
+                              child: Tooltip(
+                                message: '${e.date.day}/${e.date.month}: ${_formatNumber(e.steps)} steps',
+                                child: Container(
+                                  height: (100 * pct).clamp(4.0, 100.0),
+                                  decoration: BoxDecoration(
+                                    color: e.steps > 0
+                                        ? OrbitColors.copper500.withValues(alpha: (0.4 + pct * 0.6))
+                                        : (isDark
+                                            ? Colors.white.withValues(alpha: 0.05)
+                                            : OrbitColors.warmGray200),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      child: Center(
+                        child: Text(
+                          'No step data recorded for this month',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        );
+      },
+      loading: () => const SizedBox(
+        height: 140,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
       ),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 
@@ -679,17 +868,6 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     );
   }
 
-  List<double> _calculateHourlyIntensity(int totalSteps) {
-    if (totalSteps <= 0) return List.filled(24, 0.0);
-    // Real normalized distribution relative to actual total steps
-    return List.generate(24, (i) {
-      if (i >= 7 && i <= 21) {
-        return ((i % 5 + 1) * 0.15).clamp(0.1, 0.9);
-      }
-      return 0.05;
-    });
-  }
-
   String _formatNumber(int n) {
     if (n >= 1000) {
       final thousands = n ~/ 1000;
@@ -713,6 +891,53 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
       return '${hours}h ${remainingMinutes}m';
     }
     return '${minutes}m';
+  }
+}
+
+class _HeaderIcon extends StatelessWidget {
+  final IconData icon;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _HeaderIcon({
+    required this.icon,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.62),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: 21,
+            color: colorScheme.onSurface,
+          ),
+        ),
+      ),
+    );
   }
 }
 

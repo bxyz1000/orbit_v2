@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:orbit_v2/features/integrations/strava/data/datasources/strava_api_client.dart';
 import 'package:orbit_v2/features/integrations/strava/data/services/strava_auth_service_impl.dart';
 import 'package:orbit_v2/features/integrations/strava/domain/entities/strava_auth_token.dart';
 import 'package:orbit_v2/features/integrations/strava/domain/services/i_strava_token_storage.dart';
@@ -164,6 +165,32 @@ void main() {
 
       final stored = await mockStorage.getToken();
       expect(stored, isNull);
+    });
+
+    test('throws StravaAuthException when token refresh fails with HTTP 401', () async {
+      final expiredToken = StravaAuthToken(
+        accessToken: 'bad_access',
+        refreshToken: 'revoked_refresh',
+        expiresAt: DateTime.now().subtract(const Duration(hours: 2)),
+        athleteId: '888',
+      );
+      await mockStorage.saveToken(expiredToken);
+
+      final mockClient = MockClient((request) async {
+        return http.Response(json.encode({'message': 'Invalid refresh token'}), 401);
+      });
+
+      final authService = StravaAuthServiceImpl(
+        tokenStorage: mockStorage,
+        httpClient: mockClient,
+        clientId: 'test_client_id',
+        clientSecret: 'test_client_secret',
+      );
+
+      expect(
+        () async => await authService.getValidToken(),
+        throwsA(isA<StravaAuthException>()),
+      );
     });
   });
 }
