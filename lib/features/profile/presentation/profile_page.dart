@@ -343,6 +343,7 @@ class ProfilePage extends ConsumerWidget {
     bool isDark,
   ) {
     final isHealthConnected = healthAuthAsync.asData?.value ?? false;
+    final stravaState = stravaStateAsync.asData?.value;
     final stravaStatus = stravaState?.status ?? StravaConnectionStatus.notConnected;
     final isStravaConnected = stravaStatus == StravaConnectionStatus.connected ||
         stravaStatus == StravaConnectionStatus.syncing;
