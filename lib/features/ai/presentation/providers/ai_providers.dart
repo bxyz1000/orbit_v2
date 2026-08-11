@@ -10,6 +10,7 @@ import 'package:orbit_v2/shared/providers/data_providers.dart';
 import 'package:orbit_v2/features/integrations/strava/presentation/providers/strava_providers.dart';
 import 'package:orbit_v2/features/integrations/strava/domain/entities/strava_auth_state.dart';
 import 'package:orbit_v2/features/score/presentation/providers/score_providers.dart';
+import 'package:orbit_v2/features/settings/presentation/providers/preferences_providers.dart';
 
 final geminiApiKeyProvider = Provider<String?>((ref) {
   const envKey = String.fromEnvironment('GEMINI_API_KEY');
@@ -31,7 +32,14 @@ final orbitAIContextProvider = FutureProvider<OrbitAIContext>((ref) async {
   final isStravaConnected = stravaState?.status == StravaConnectionStatus.connected ||
       stravaState?.status == StravaConnectionStatus.syncing;
 
-  final score7DayEma = ref.watch(rolling7DayAverageProvider).asData?.value;
+  final lastSevenScores = ref.watch(lastSevenDaysScoresProvider).asData?.value;
+  final score7DayEma = lastSevenScores == null || lastSevenScores.isEmpty
+      ? null
+      : lastSevenScores.fold<double>(
+            0,
+            (sum, score) => sum + score.totalScore,
+          ) /
+          lastSevenScores.length;
 
   final pendingTasks = ref.watch(pendingTasksProvider).asData?.value ?? [];
   final habits = ref.watch(allHabitsProvider).asData?.value ?? [];
