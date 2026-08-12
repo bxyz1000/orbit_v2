@@ -89,6 +89,7 @@ void main() {
           home: Scaffold(
             body: OrbitBottomNav(
               currentIndex: 0,
+              isDarkSurface: false,
               onTap: (index) => tappedIndex = index,
             ),
           ),

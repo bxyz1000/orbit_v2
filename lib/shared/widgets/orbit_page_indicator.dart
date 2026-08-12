@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 class OrbitPageIndicator extends StatelessWidget {
   final int pageCount;
   final int currentPage;
+  final bool isDarkSurface;
 
   const OrbitPageIndicator({
     super.key,
     required this.pageCount,
     required this.currentPage,
+    required this.isDarkSurface,
   });
 
   @override
@@ -29,7 +31,9 @@ class OrbitPageIndicator extends StatelessWidget {
             borderRadius: BorderRadius.circular(3),
             color: isActive
                 ? colorScheme.primary
-                : colorScheme.onSurface.withValues(alpha: 0.15),
+                : (isDarkSurface
+                    ? Colors.white.withValues(alpha: 0.28)
+                    : const Color(0xFF96897C).withValues(alpha: 0.35)),
           ),
         );
       }),

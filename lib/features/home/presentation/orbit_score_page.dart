@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_gradients.dart';
+import '../../../core/theme/orbit_theme.dart';
 import '../../../shared/widgets/orbit_hero_score.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
 import '../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -24,93 +25,102 @@ class OrbitScorePage extends ConsumerWidget {
 
     return dashboardAsync.when(
       data: (state) {
-        final userName = prefsAsync.asData?.value.userName ?? 'User';
-        final greeting = _getGreeting();
+        return Theme(
+          data: OrbitTheme.light,
+          child: Builder(
+            builder: (lightContext) {
+              final userName = prefsAsync.asData?.value.userName ?? 'User';
+              final greeting = _getGreeting();
 
-        // Compute 7-day baseline comparison strictly from real historical scores
-        String? baselineText;
-        final sevenDays = sevenDaysAsync.asData?.value;
-        if (sevenDays != null && sevenDays.length >= 7) {
-          final avg7 = sevenDays
-              .take(6)
-              .fold<int>(0, (s, d) => s + d.totalScore) / 6;
-          if (avg7 > 0) {
-            final pctChange =
-                ((state.orbitScore.totalScore - avg7) / avg7 * 100);
-            final sign = pctChange >= 0 ? '↑' : '↓';
-            baselineText =
-                '$sign ${pctChange.abs().toStringAsFixed(1)}% vs your 7-day baseline';
-          }
-        }
+              // Compute 7-day baseline comparison strictly from real historical scores
+              String? baselineText;
+              final sevenDays = sevenDaysAsync.asData?.value;
+              if (sevenDays != null && sevenDays.length >= 7) {
+                final avg7 = sevenDays
+                    .take(6)
+                    .fold<int>(0, (s, d) => s + d.totalScore) / 6;
+                if (avg7 > 0) {
+                  final pctChange =
+                      ((state.orbitScore.totalScore - avg7) / avg7 * 100);
+                  final sign = pctChange >= 0 ? '↑' : '↓';
+                  baselineText =
+                      '$sign ${pctChange.abs().toStringAsFixed(1)}% vs your 7-day baseline';
+                }
+              }
 
-        // Motivation text based strictly on state
-        String motivationTitle;
-        String motivationSubtitle;
-        if (state.beatYesterdayScore <= 0) {
-          motivationTitle = "You're ahead of yesterday";
-          motivationSubtitle = "Keep building momentum.";
-        } else {
-          motivationTitle =
-              "+ ${state.beatYesterdayScore} points to beat yesterday";
-          motivationSubtitle = "Keep building momentum.";
-        }
+              // Motivation text based strictly on state
+              String motivationTitle;
+              String motivationSubtitle;
+              if (state.beatYesterdayScore <= 0) {
+                motivationTitle = "You're ahead of yesterday";
+                motivationSubtitle = "Keep building momentum.";
+              } else {
+                motivationTitle =
+                    "+ ${state.beatYesterdayScore} points to beat yesterday";
+                motivationSubtitle = "Keep building momentum.";
+              }
 
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            await ref.read(healthSyncNotifierProvider.notifier).sync();
-            ref.invalidate(dailyInsightsProvider);
-            ref.invalidate(dashboardProvider);
-            await ref.read(dashboardProvider.future);
-          },
-          child: Stack(
-            children: [
-              // Ambient copper aura background gradient
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: OrbitGradients.copperAura,
-                  ),
-                ),
-              ),
-
-              SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 16,
-                  left: OrbitSpacing.pagePadding,
-                  right: OrbitSpacing.pagePadding,
-                  bottom: MediaQuery.of(context).padding.bottom + 110,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              return RefreshIndicator(
+                onRefresh: () async {
+                  await ref.read(healthSyncNotifierProvider.notifier).sync();
+                  ref.invalidate(dailyInsightsProvider);
+                  ref.invalidate(dashboardProvider);
+                  await ref.read(dashboardProvider.future);
+                },
+                child: Stack(
                   children: [
-                    _buildHeader(context, greeting, userName, isDark),
-                    const SizedBox(height: 14),
-                    _buildCurvedDaySelector(context, isDark),
-                    const SizedBox(height: 16),
-
-                    Center(
-                      child: OrbitHeroScore(
-                        score: state.orbitScore.totalScore,
-                        progress:
-                            (state.orbitScore.totalScore / 100).clamp(0.0, 1.0),
-                        baselineText: baselineText,
-                        motivationTitle: motivationTitle,
-                        motivationSubtitle: motivationSubtitle,
+                    // Warm cream background gradient matching the reference
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0xFFF8F2ED),
+                              Color(0xFFFFEFE6),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 22),
 
-                    _buildCategoryGrid(context, state, isDark),
-                    const SizedBox(height: 18),
-
-                    _buildInsightsSection(context, ref, isDark),
+                    SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(lightContext).padding.top + 16,
+                        left: OrbitSpacing.pagePadding,
+                        right: OrbitSpacing.pagePadding,
+                        bottom: MediaQuery.of(lightContext).padding.bottom + 110,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(lightContext, greeting, userName, false),
+                          const SizedBox(height: 14),
+                          _buildCurvedDaySelector(lightContext, false),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: OrbitHeroScore(
+                              score: state.orbitScore.totalScore,
+                              progress: (state.orbitScore.totalScore / 100)
+                                  .clamp(0.0, 1.0),
+                              baselineText: baselineText,
+                              motivationTitle: motivationTitle,
+                              motivationSubtitle: motivationSubtitle,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _buildCategoryGrid(lightContext, state, false),
+                          const SizedBox(height: 18),
+                          _buildInsightsSection(lightContext, ref, false),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },

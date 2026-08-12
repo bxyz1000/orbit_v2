@@ -20,7 +20,7 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
   late PageController _pageController;
-  int _currentPage = 1; // 0=Feature Hub, 1=Score (Default), 2=Steps
+  int _currentPage = 0; // 0=Feature Hub, 1=Score, 2=Steps
   int _bottomNavIndex = 0; // 0=Home, 1=AI, 2=Profile
   Timer? _healthSyncTimer;
 
@@ -29,8 +29,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Initial page set to 1 (CENTER - Score Home)
-    _pageController = PageController(initialPage: 1);
+    // Start on the feature hub so the default view matches the reference UI.
+    _pageController = PageController(initialPage: 0);
 
     _refreshHealth();
     _startPeriodicHealthSync();
@@ -72,18 +72,16 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   void _onPageChanged(int index) {
     setState(() {
       _currentPage = index;
-      if (index == 1) {
-        _bottomNavIndex = 0; // Home is selected when on center page
-      }
+      _bottomNavIndex = 0;
     });
   }
 
   void _onBottomNavTap(int index) {
     if (index == 0) {
-      // Home -> Jump/Animate to Center page (Score)
+      // Home -> Jump/Animate to the feature hub
       setState(() => _bottomNavIndex = 0);
       _pageController.animateToPage(
-        1,
+        0,
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOutCubic,
       );
@@ -137,12 +135,14 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
                 OrbitPageIndicator(
                   pageCount: 3,
                   currentPage: _currentPage,
+                  isDarkSurface: _currentPage == 0,
                 ),
                 const SizedBox(height: 12),
 
                 // Floating 3-pill bottom nav
                 OrbitBottomNav(
                   currentIndex: _bottomNavIndex,
+                  isDarkSurface: _currentPage == 0,
                   onTap: _onBottomNavTap,
                 ),
               ],

@@ -20,12 +20,12 @@ class OrbitPeriodSelector extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.06)
-            : OrbitColors.warmGray100,
-        borderRadius: BorderRadius.circular(12),
+            : const Color(0xFFEDE6DF),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: List.generate(labels.length, (index) {
@@ -36,18 +36,18 @@ class OrbitPeriodSelector extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 11),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? (isDark ? OrbitColors.darkElevated : OrbitColors.white)
+                      ? (isDark ? OrbitColors.darkElevated : Colors.white)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           )
                         ]
                       : null,
@@ -56,12 +56,12 @@ class OrbitPeriodSelector extends StatelessWidget {
                   child: Text(
                     labels[index],
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
                       color: isSelected
                           ? colorScheme.onSurface
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
+                          : colorScheme.onSurface.withValues(alpha: 0.42),
                     ),
                   ),
                 ),

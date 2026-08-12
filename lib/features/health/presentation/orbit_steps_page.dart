@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_shadows.dart';
+import '../../../core/theme/orbit_theme.dart';
 import '../../../shared/widgets/orbit_period_selector.dart';
 import '../../../shared/widgets/orbit_activity_grid.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
@@ -35,151 +36,73 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     final todayHourlyAsync = ref.watch(todayHourlyStepsProvider);
     final insightsAsync = ref.watch(dailyInsightsProvider);
 
-    final heartSamplesAsync = ref.watch(todayHeartRateSamplesProvider);
-    final sleepHistoryAsync = ref.watch(sleepHistoryProvider(7));
-    final stepHistoryAsync = ref.watch(stepHistoryProvider(7));
-    final workoutHistoryAsync = ref.watch(workoutHistoryProvider(7));
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final isAuthorized = healthAuthAsync.asData?.value ?? false;
-    final metricStatus = isAuthorized ? HealthMetricStatus.available : HealthMetricStatus.notConnected;
-
     final hourlyIntensity = todayHourlyAsync.asData?.value ?? List.filled(24, 0.0);
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? const [OrbitColors.darkBackground, OrbitColors.darkSurface]
-                    : const [Color(0xFFFFFAF7), Color(0xFFFFF2EA)],
-              ),
-            ),
-          ),
-        ),
-        SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: OrbitSpacing.pagePadding,
-            right: OrbitSpacing.pagePadding,
-            bottom: MediaQuery.of(context).padding.bottom + 110,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Theme(
+      data: OrbitTheme.light,
+      child: Builder(
+        builder: (lightContext) {
+          return Stack(
             children: [
-              _buildHeader(context, isDark),
-              const SizedBox(height: 22),
-
-              if (!isAuthorized) ...[
-                _buildDisconnectedBanner(context, ref),
-                const SizedBox(height: 18),
-              ],
-
-              OrbitPeriodSelector(
-                selectedIndex: _periodIndex,
-                onChanged: (i) => setState(() => _periodIndex = i),
-              ),
-              const SizedBox(height: 26),
-
-              if (_periodIndex == 0) ...[
-                _buildDayView(
-                  context,
-                  healthAsync,
-                  comparisonAsync,
-                  hourlyIntensity,
-                  isDark,
-                ),
-              ] else if (_periodIndex == 1) ...[
-                _buildWeekView(context, weeklyAsync, isDark),
-              ] else ...[
-                _buildMonthView(context, monthlyAsync, isDark),
-              ],
-              const SizedBox(height: 24),
-
-              _buildInsights(context, insightsAsync, 'Orbit Insights'),
-              const SizedBox(height: 24),
-
-              _buildHealthSignalsHeader(context),
-              const SizedBox(height: 12),
-              healthAsync.when(
-                data: (snapshot) => OrbitHeartRateCard(
-                  avgHeartRate: snapshot.avgHeartRate,
-                  restingHeartRate: snapshot.restingHeartRate,
-                  samples: heartSamplesAsync.asData?.value ?? [],
-                  status: metricStatus,
-                  onConnectTap: () => _requestHealthAuth(ref),
-                ),
-                loading: () =>
-                    OrbitHeartRateCard(status: HealthMetricStatus.loading),
-                error: (_, __) => OrbitHeartRateCard(status: HealthMetricStatus.error),
-              ),
-              const SizedBox(height: 16),
-              healthAsync.when(
-                data: (snapshot) => OrbitCaloriesCard(
-                  activeCalories: snapshot.calories,
-                  history: stepHistoryAsync.asData?.value ?? [],
-                  status: metricStatus,
-                  onConnectTap: () => _requestHealthAuth(ref),
-                ),
-                loading: () => OrbitCaloriesCard(
-                  activeCalories: 0,
-                  status: HealthMetricStatus.loading,
-                ),
-                error: (_, __) => OrbitCaloriesCard(
-                  activeCalories: 0,
-                  status: HealthMetricStatus.error,
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFFFFFBF8),
+                        Color(0xFFFFF1E8),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              healthAsync.when(
-                data: (snapshot) => OrbitSleepCard(
-                  sleepMinutes: snapshot.sleepMinutes,
-                  history: sleepHistoryAsync.asData?.value ?? [],
-                  status: metricStatus,
-                  onConnectTap: () => _requestHealthAuth(ref),
+              SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(lightContext).padding.top + 16,
+                  left: OrbitSpacing.pagePadding,
+                  right: OrbitSpacing.pagePadding,
+                  bottom: MediaQuery.of(lightContext).padding.bottom + 110,
                 ),
-                loading: () => OrbitSleepCard(
-                  sleepMinutes: 0,
-                  status: HealthMetricStatus.loading,
-                ),
-                error: (_, __) => OrbitSleepCard(
-                  sleepMinutes: 0,
-                  status: HealthMetricStatus.error,
-                ),
-              ),
-              const SizedBox(height: 16),
-              healthAsync.when(
-                data: (snapshot) => OrbitActivityCard(
-                  activeMinutes: snapshot.activeMinutes,
-                  workoutMinutes: snapshot.workoutMinutes,
-                  distanceMeters: snapshot.distance,
-                  workouts: workoutHistoryAsync.asData?.value ?? [],
-                  status: metricStatus,
-                  onConnectTap: () => _requestHealthAuth(ref),
-                ),
-                loading: () => OrbitActivityCard(
-                  activeMinutes: 0,
-                  workoutMinutes: 0,
-                  distanceMeters: 0,
-                  status: HealthMetricStatus.loading,
-                ),
-                error: (_, __) => OrbitActivityCard(
-                  activeMinutes: 0,
-                  workoutMinutes: 0,
-                  distanceMeters: 0,
-                  status: HealthMetricStatus.error,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(lightContext, false),
+                    const SizedBox(height: 22),
+                    if (!isAuthorized) ...[
+                      _buildDisconnectedBanner(lightContext, ref),
+                      const SizedBox(height: 18),
+                    ],
+                    OrbitPeriodSelector(
+                      selectedIndex: _periodIndex,
+                      onChanged: (i) => setState(() => _periodIndex = i),
+                    ),
+                    const SizedBox(height: 26),
+                    if (_periodIndex == 0) ...[
+                      _buildDayView(
+                        lightContext,
+                        healthAsync,
+                        comparisonAsync,
+                        hourlyIntensity,
+                        false,
+                      ),
+                    ] else if (_periodIndex == 1) ...[
+                      _buildWeekView(lightContext, weeklyAsync, false),
+                    ] else ...[
+                      _buildMonthView(lightContext, monthlyAsync, false),
+                    ],
+                    const SizedBox(height: 24),
+                    _buildInsights(lightContext, insightsAsync, 'Orbit Insights'),
+                  ],
                 ),
               ),
             ],
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 
@@ -238,11 +161,14 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
 
   Future<void> _requestHealthAuth(WidgetRef ref) async {
     final success = await ref.read(healthServiceProvider).requestAuthorization();
+    ref.invalidate(healthAuthorizationProvider);
+    ref.invalidate(todayHealthSnapshotProvider);
+    ref.invalidate(todayHeartRateSamplesProvider);
+    ref.invalidate(todayHourlyStepsProvider);
+
     if (success) {
-      ref.invalidate(healthAuthorizationProvider);
+      await ref.read(healthSyncNotifierProvider.notifier).sync();
       ref.invalidate(todayHealthSnapshotProvider);
-      ref.invalidate(todayHeartRateSamplesProvider);
-      ref.invalidate(todayHourlyStepsProvider);
     }
   }
 

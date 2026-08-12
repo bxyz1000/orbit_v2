@@ -8,6 +8,7 @@ import 'package:orbit_v2/features/health/presentation/widgets/orbit_heart_rate_c
 import 'package:orbit_v2/features/health/presentation/widgets/orbit_sleep_card.dart';
 import 'package:orbit_v2/features/health/presentation/widgets/orbit_calories_card.dart';
 import 'package:orbit_v2/features/health/presentation/widgets/orbit_activity_card.dart';
+import 'package:orbit_v2/features/health/domain/repositories/i_health_service.dart';
 
 void main() {
   group('Health Expansion Domain Models Tests', () {
@@ -179,4 +180,63 @@ void main() {
       expect(comp, 25.0);
     });
   });
+
+  group('Health Connect Authorization Flow Tests', () {
+    test('Mock Health Service handles authorization states deterministically', () async {
+      final service = _TestHealthService(isAvailable: true, initialAuth: false);
+
+      expect(await service.isAuthorized(), isFalse);
+
+      final granted = await service.requestAuthorization();
+      expect(granted, isTrue);
+      expect(await service.isAuthorized(), isTrue);
+    });
+
+    test('Mock Health Service returns false when Health Connect is unavailable', () async {
+      final service = _TestHealthService(isAvailable: false, initialAuth: false);
+
+      expect(await service.isAuthorized(), isFalse);
+      expect(await service.requestAuthorization(), isFalse);
+    });
+  });
+}
+
+class _TestHealthService implements IHealthService {
+  final bool isAvailable;
+  bool _authorized;
+
+  _TestHealthService({required this.isAvailable, required bool initialAuth}) : _authorized = initialAuth;
+
+  @override
+  Future<bool> isAuthorized() async {
+    if (!isAvailable) return false;
+    return _authorized;
+  }
+
+  @override
+  Future<bool> requestAuthorization() async {
+    if (!isAvailable) return false;
+    _authorized = true;
+    return _authorized;
+  }
+
+  @override
+  Future<HealthSnapshot> getHealthSnapshot(DateTime date) async {
+    if (!_authorized) return HealthSnapshot.empty();
+    return HealthSnapshot(
+      steps: 5000,
+      calories: 200,
+      distance: 3000,
+      activeMinutes: 30,
+      sleepMinutes: 420,
+      workoutMinutes: 20,
+      timestamp: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<List<HeartRateSample>> getHeartRateSamples(DateTime date) async => [];
+
+  @override
+  Future<List<double>> getHourlyStepIntensity(DateTime date) async => List.filled(24, 0.0);
 }

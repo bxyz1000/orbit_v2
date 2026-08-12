@@ -47,6 +47,12 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
     final hasGradient = widget.gradient != null;
     final textColor = hasGradient ? Colors.white : colorScheme.onSurface;
     final accentColor = widget.iconColor ?? colorScheme.primary;
+    final surfaceColor = isDark
+        ? OrbitColors.darkElevated
+        : const Color(0xFFFDF9F5);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : const Color(0xFFE8DDD3).withValues(alpha: 0.9);
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
@@ -63,17 +69,13 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
           decoration: BoxDecoration(
             color: hasGradient
                 ? null
-                : (isDark ? OrbitColors.darkElevated : OrbitColors.white),
+                : surfaceColor,
             gradient: widget.gradient,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: _isPressed ? OrbitShadows.glass : OrbitShadows.card,
             border: hasGradient
                 ? null
-                : Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : OrbitColors.warmGray200.withValues(alpha: 0.4),
-                  ),
+                : Border.all(color: borderColor),
           ),
           child: Stack(
             children: [
@@ -105,7 +107,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                 ),
               // Card content
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -114,7 +116,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(9),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: hasGradient
                                 ? Colors.white.withValues(alpha: 0.2)
@@ -123,7 +125,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                           ),
                           child: Icon(
                             widget.icon,
-                            size: 18,
+                            size: 19,
                             color: hasGradient ? Colors.white : accentColor,
                           ),
                         ),
@@ -137,7 +139,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: textColor,
-                              fontSize: 20,
+                              fontSize: 21,
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -148,7 +150,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: textColor.withValues(alpha: hasGradient ? 0.85 : 0.65),
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -160,7 +162,7 @@ class _OrbitFeatureCardState extends State<OrbitFeatureCard> {
                           widget.subtitle!,
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 color: textColor.withValues(alpha: hasGradient ? 0.7 : 0.4),
-                                fontSize: 10,
+                                fontSize: 11,
                               ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
