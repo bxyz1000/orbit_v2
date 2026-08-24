@@ -119,7 +119,15 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
                 },
               ),
               const OrbitScorePage(),
-              const OrbitStepsPage(),
+              OrbitStepsPage(
+                onNavigateBack: () {
+                  _pageController.animateToPage(
+                    1,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeInOutCubic,
+                  );
+                },
+              ),
             ],
           ),
 

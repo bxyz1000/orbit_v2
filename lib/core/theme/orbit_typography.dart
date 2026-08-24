@@ -84,19 +84,19 @@ class OrbitTypography {
 
   // ─── Semantic Orbit Styles ───
 
-  /// Huge score display: 96pt bold
+  /// Huge score display: 96pt bold, tight reference-style tracking (-3%)
   static TextStyle get scoreHero => GoogleFonts.inter(
     fontSize: 96,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -2,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -3,
     height: 1.0,
   );
 
   /// Large metric number (e.g., step count "12,231")
   static TextStyle get metricLarge => GoogleFonts.inter(
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: FontWeight.w700,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
     height: 1.1,
   );
 
@@ -116,17 +116,17 @@ class OrbitTypography {
     height: 1.2,
   );
 
-  /// Section title (uppercase tracking)
+  /// Section title (uppercase micro-label, reference tracking +1.2)
   static TextStyle get sectionLabel => GoogleFonts.inter(
     fontSize: 11,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 1.5,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 1.2,
     height: 1.4,
   );
 
   /// Greeting text
   static TextStyle get greeting => GoogleFonts.inter(
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: FontWeight.w400,
     letterSpacing: 0,
     height: 1.4,

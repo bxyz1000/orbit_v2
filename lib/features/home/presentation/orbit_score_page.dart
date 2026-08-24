@@ -5,6 +5,7 @@ import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_gradients.dart';
 import '../../../core/theme/orbit_theme.dart';
 import '../../../shared/widgets/orbit_hero_score.dart';
+import '../../../shared/widgets/orbit_glass_card.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
 import '../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
@@ -473,19 +474,13 @@ class OrbitScorePage extends ConsumerWidget {
         insightsAsync.when(
           data: (insights) {
             if (insights.isEmpty) {
-              return Container(
+              return SizedBox(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : OrbitColors.warmGray200.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
+                child: OrbitGlassCard(
+                  radius: 20,
+                  dark: isDark,
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -511,11 +506,12 @@ class OrbitScorePage extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  ],
-                ),
-              );
-            }
-            return OrbitInsightCardV2(insight: insights.first);
+                     ],
+                   ),
+                 ),
+               );
+             }
+             return OrbitInsightCardV2(insight: insights.first);
           },
           loading: () => const SizedBox(
             height: 50,
@@ -566,26 +562,10 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
+    return OrbitGlassCard(
+      radius: 22,
+      dark: isDark,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? OrbitColors.darkElevated : const Color(0xFFFAF6F2),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.04),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1C1816).withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

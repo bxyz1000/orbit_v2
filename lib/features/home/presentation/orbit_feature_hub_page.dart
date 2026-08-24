@@ -12,12 +12,14 @@ import '../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../health/presentation/providers/health_providers.dart';
 import '../../integrations/strava/presentation/providers/strava_providers.dart';
 import '../../integrations/strava/domain/entities/strava_auth_state.dart';
+import '../../integrations/strava/domain/entities/strava_activity.dart';
 import '../../notes/presentation/notes_page.dart';
 import '../../planner/presentation/planner_page.dart';
 import '../../habits/presentation/habits_page.dart';
 import '../../focus/presentation/focus_page.dart';
 import '../../tasks/presentation/tasks_page.dart';
 import '../../analytics/presentation/insights_page.dart';
+import '../../profile/presentation/profile_page.dart';
 
 /// LEFT PAGE — Feature Hub ("Your Orbit").
 /// Displays real feature counts, health metrics, and Strava integration status.
@@ -98,17 +100,46 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.person_rounded,
-                  size: 18,
-                  color: colorScheme.onPrimaryContainer,
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  );
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.person_rounded,
+                        size: 18,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    // Notification dot per reference design
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: OrbitColors.copper500,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark ? OrbitColors.darkBackground : Colors.white,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -156,10 +187,12 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Notes',
-                  metric: '$notesCount',
-                  subtitle: 'Notes',
+                  subtitle: 'Capture your thoughts',
+                  backgroundImage: 'assets/images/notes_paper.jpg',
                   icon: Icons.description_outlined,
-                  iconColor: Colors.amber,
+                  iconColor: const Color(0xFF7C5CFC),
+                  tags: const ['Organize', 'Plan', 'Get things done'],
+                  footerIcon: Icons.checklist_rounded,
                   backgroundPainter: DotsGridPainter(),
                   badge: notesCount > 0
                       ? Container(
@@ -189,7 +222,8 @@ class OrbitFeatureHubPage extends ConsumerWidget {
               Expanded(
                 child: OrbitFeatureCard(
                   title: 'Timer',
-                  metric: 'Timer',
+                  // Default Pomodoro preset from FocusPage ([15, 25, 45, 60]).
+                  metric: '25:00',
                   subtitle: 'Pomodoro',
                   icon: Icons.timer_outlined,
                   iconColor: Colors.deepOrange,
@@ -216,9 +250,12 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                 child: OrbitFeatureCard(
                   title: 'Planner',
                   metric: '$eventsCount',
-                  subtitle: 'Events Today',
+                  subtitle: 'Plan your day',
+                  backgroundImage: 'assets/images/planner_calendar.jpg',
                   icon: Icons.calendar_today_rounded,
-                  iconColor: Colors.purple,
+                  iconColor: const Color(0xFF22A45D),
+                  tags: const ['Schedule', 'Track', 'Stay consistent'],
+                  footerIcon: Icons.calendar_today_rounded,
                   backgroundPainter: CalendarGridPainter(),
                   onTap: () {
                     Navigator.of(context).push(
@@ -308,9 +345,12 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                 child: OrbitFeatureCard(
                   title: 'Goals',
                   metric: '$goalsCount',
-                  subtitle: 'Active Goals',
+                  subtitle: 'Achieve more',
+                  backgroundImage: 'assets/images/goals_mountain.jpg',
                   icon: Icons.flag_rounded,
-                  iconColor: Colors.teal,
+                  iconColor: const Color(0xFF2F6FEB),
+                  tags: const ['Set', 'Focus', 'Win'],
+                  footerIcon: Icons.emoji_events_rounded,
                   backgroundPainter: GoalsFlagPainter(),
                   onTap: () {
                     Navigator.of(context).push(
@@ -375,13 +415,16 @@ class OrbitFeatureHubPage extends ConsumerWidget {
     if (status == StravaConnectionStatus.error) {
       final errorMsg = stravaState?.errorMessage ?? 'Tap to reconnect';
       return OrbitFeatureCard(
-        title: 'Strava',
+        title: 'Strava Run',
         metric: 'Auth Error',
         subtitle: errorMsg,
         icon: Icons.error_outline_rounded,
         iconColor: Colors.redAccent,
         isWide: true,
+        tags: const ['Connect', 'Sync', 'Track'],
+        footerIcon: Icons.directions_run_rounded,
         backgroundPainter: StravaRoutePainter(),
+        backgroundImage: 'assets/images/strava_run.jpg',
         onTap: () async {
           try {
             await ref.read(stravaAuthNotifierProvider.notifier).connect();
@@ -398,25 +441,31 @@ class OrbitFeatureHubPage extends ConsumerWidget {
 
     if (status == StravaConnectionStatus.syncing) {
       return OrbitFeatureCard(
-        title: 'Strava',
+        title: 'Strava Run',
         metric: 'Syncing...',
         subtitle: 'Fetching activities',
         icon: Icons.directions_run_rounded,
-        iconColor: OrbitColors.copper500,
+        iconColor: const Color(0xFFFC5200),
         isWide: true,
+        tags: const ['Connect', 'Sync', 'Track'],
+        footerIcon: Icons.directions_run_rounded,
         backgroundPainter: StravaRoutePainter(),
+        backgroundImage: 'assets/images/strava_run.jpg',
       );
     }
 
     if (status == StravaConnectionStatus.notConnected) {
       return OrbitFeatureCard(
-        title: 'Strava',
+        title: 'Strava Run',
         metric: 'Not Connected',
         subtitle: 'Tap to connect Strava',
         icon: Icons.directions_run_rounded,
-        iconColor: OrbitColors.copper500,
+        iconColor: const Color(0xFFFC5200),
         isWide: true,
+        tags: const ['Connect', 'Sync', 'Track'],
+        footerIcon: Icons.directions_run_rounded,
         backgroundPainter: StravaRoutePainter(),
+        backgroundImage: 'assets/images/strava_run.jpg',
         onTap: () async {
           try {
             await ref.read(stravaAuthNotifierProvider.notifier).connect();
@@ -437,13 +486,16 @@ class OrbitFeatureHubPage extends ConsumerWidget {
         final activityList = activities as List;
         if (activityList.isEmpty) {
           return OrbitFeatureCard(
-            title: 'Strava',
+            title: 'Strava Run',
             metric: 'No activities',
             subtitle: 'No recent activities',
             icon: Icons.directions_run_rounded,
-            iconColor: OrbitColors.copper500,
+            iconColor: const Color(0xFFFC5200),
             isWide: true,
+            tags: const ['Connect', 'Sync', 'Track'],
+            footerIcon: Icons.directions_run_rounded,
             backgroundPainter: StravaRoutePainter(),
+            backgroundImage: 'assets/images/strava_run.jpg',
             onTap: () async {
               try {
                 await ref.read(stravaSyncNotifierProvider.notifier).sync();
@@ -458,18 +510,35 @@ class OrbitFeatureHubPage extends ConsumerWidget {
           );
         }
 
-        final latest = activityList.first;
+        final StravaActivity latest = activityList.first;
         final distanceKm = (latest.distanceMeters / 1000).toStringAsFixed(2);
-        final titleText = '${latest.name} (${latest.type})';
 
         return OrbitFeatureCard(
-          title: 'Strava',
-          metric: '$distanceKm km',
-          subtitle: titleText,
+          title: 'Strava Run',
+          subtitle: 'Track your runs',
           icon: Icons.directions_run_rounded,
-          iconColor: OrbitColors.copper500,
+          iconColor: const Color(0xFFFC5200),
           isWide: true,
+          stats: [
+            OrbitCardStat(
+              icon: Icons.route_rounded,
+              value: '$distanceKm km',
+              label: 'Distance',
+            ),
+            OrbitCardStat(
+              icon: Icons.timer_outlined,
+              value: _formatMovingTime(latest.movingTimeSeconds),
+              label: 'Time',
+            ),
+            OrbitCardStat(
+              icon: Icons.speed_rounded,
+              value:
+                  _formatPace(latest.distanceMeters, latest.movingTimeSeconds),
+              label: 'Avg Pace /km',
+            ),
+          ],
           backgroundPainter: StravaRoutePainter(),
+          backgroundImage: 'assets/images/strava_run.jpg',
           onTap: () async {
             try {
               await ref.read(stravaSyncNotifierProvider.notifier).sync();
@@ -484,20 +553,28 @@ class OrbitFeatureHubPage extends ConsumerWidget {
         );
       },
       loading: () => OrbitFeatureCard(
-        title: 'Strava',
+        title: 'Strava Run',
         metric: 'Syncing...',
         subtitle: 'Loading activities',
         icon: Icons.directions_run_rounded,
+        iconColor: const Color(0xFFFC5200),
         isWide: true,
+        tags: const ['Connect', 'Sync', 'Track'],
+        footerIcon: Icons.directions_run_rounded,
         backgroundPainter: StravaRoutePainter(),
+        backgroundImage: 'assets/images/strava_run.jpg',
       ),
       error: (err, _) => OrbitFeatureCard(
-        title: 'Strava',
+        title: 'Strava Run',
         metric: 'Connected',
         subtitle: 'Tap to sync workouts',
         icon: Icons.directions_run_rounded,
+        iconColor: const Color(0xFFFC5200),
         isWide: true,
+        tags: const ['Connect', 'Sync', 'Track'],
+        footerIcon: Icons.directions_run_rounded,
         backgroundPainter: StravaRoutePainter(),
+        backgroundImage: 'assets/images/strava_run.jpg',
         onTap: () async {
           try {
             await ref.read(stravaSyncNotifierProvider.notifier).sync();
@@ -511,6 +588,26 @@ class OrbitFeatureHubPage extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  String _formatMovingTime(int seconds) {
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) {
+      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  /// Average pace in min/km from total meters + moving seconds.
+  String _formatPace(double distanceMeters, int movingSeconds) {
+    final distanceKm = distanceMeters / 1000;
+    if (distanceKm <= 0 || movingSeconds <= 0) return '--:--';
+    final secPerKm = movingSeconds / distanceKm;
+    final m = secPerKm ~/ 60;
+    final s = (secPerKm % 60).round();
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   String _formatNumber(int n) {

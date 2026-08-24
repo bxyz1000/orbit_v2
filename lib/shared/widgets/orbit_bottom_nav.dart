@@ -18,10 +18,9 @@ class OrbitBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final surface = isDarkSurface ? OrbitColors.darkElevated : const Color(0xFFF8F1EA);
     final border = isDarkSurface
-        ? Colors.white.withValues(alpha: 0.08)
-        : const Color(0xFFE1D6CB).withValues(alpha: 0.7);
+        ? Colors.white.withValues(alpha: 0.16)
+        : Colors.white.withValues(alpha: 0.75);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -39,7 +38,19 @@ class OrbitBottomNav extends StatelessWidget {
               height: 64,
               constraints: const BoxConstraints(maxWidth: 360),
               decoration: BoxDecoration(
-                color: surface.withValues(alpha: isDarkSurface ? 0.92 : 0.96),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDarkSurface
+                      ? [
+                          Colors.white.withValues(alpha: 0.12),
+                          Colors.white.withValues(alpha: 0.05),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.85),
+                          Colors.white.withValues(alpha: 0.60),
+                        ],
+                ),
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(

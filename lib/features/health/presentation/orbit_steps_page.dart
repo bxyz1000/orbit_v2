@@ -4,12 +4,15 @@ import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_shadows.dart';
 import '../../../core/theme/orbit_theme.dart';
+import '../../../shared/widgets/orbit_glass_card.dart';
 import '../../../shared/widgets/orbit_period_selector.dart';
 import '../../../shared/widgets/orbit_activity_grid.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
 import '../../health/presentation/providers/health_providers.dart';
 import '../../health/presentation/providers/steps_page_providers.dart';
 import '../../insights/presentation/providers/insight_providers.dart';
+import '../../settings/domain/user_preferences.dart';
+import '../../settings/presentation/providers/preferences_providers.dart';
 import 'widgets/orbit_heart_rate_card.dart';
 import 'widgets/orbit_sleep_card.dart';
 import 'widgets/orbit_calories_card.dart';
@@ -17,7 +20,9 @@ import 'widgets/orbit_activity_card.dart';
 
 /// RIGHT PAGE — Steps analytics experience displaying real personal performance metrics.
 class OrbitStepsPage extends ConsumerStatefulWidget {
-  const OrbitStepsPage({super.key});
+  final VoidCallback? onNavigateBack;
+
+  const OrbitStepsPage({super.key, this.onNavigateBack});
 
   @override
   ConsumerState<OrbitStepsPage> createState() => _OrbitStepsPageState();
@@ -35,6 +40,8 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     final monthlyAsync = ref.watch(monthlyStepsProvider);
     final todayHourlyAsync = ref.watch(todayHourlyStepsProvider);
     final insightsAsync = ref.watch(dailyInsightsProvider);
+    final prefsAsync = ref.watch(userPreferencesStreamProvider);
+    final stepGoal = prefsAsync.asData?.value.stepGoal ?? 10000;
 
     final isAuthorized = healthAuthAsync.asData?.value ?? false;
     final hourlyIntensity = todayHourlyAsync.asData?.value ?? List.filled(24, 0.0);
@@ -88,6 +95,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                         comparisonAsync,
                         hourlyIntensity,
                         false,
+                        stepGoal: stepGoal,
                       ),
                     ] else if (_periodIndex == 1) ...[
                       _buildWeekView(lightContext, weeklyAsync, false),
@@ -115,7 +123,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
         _HeaderIcon(
           icon: Icons.chevron_left_rounded,
           isDark: isDark,
-          onTap: () {},
+          onTap: widget.onNavigateBack ?? () {},
         ),
         Text(
           'Steps',
@@ -246,8 +254,9 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     AsyncValue healthAsync,
     AsyncValue<double?> comparisonAsync,
     List<double> hourlyIntensity,
-    bool isDark,
-  ) {
+    bool isDark, {
+    required int stepGoal,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return healthAsync.when(
@@ -317,18 +326,10 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             const SizedBox(height: 24),
 
             // ─── Activity Grid (Real Hourly Intensity Pipeline) ───
-            Container(
+            OrbitGlassCard(
+              radius: 22,
+              dark: isDark,
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: OrbitShadows.card,
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : OrbitColors.warmGray200.withValues(alpha: 0.2),
-                ),
-              ),
               child: OrbitActivityGrid(
                 hourlyIntensity: hourlyIntensity,
               ),
@@ -358,7 +359,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
             const SizedBox(height: 12),
 
             // ─── Daily Goal Progress Bar ───
-            _buildDailyGoal(context, stepsVal, isDark),
+            _buildDailyGoal(context, stepsVal, isDark, stepGoal),
           ],
         );
       },
@@ -370,24 +371,125 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
     );
   }
 
-  Widget _buildDailyGoal(BuildContext context, int steps, bool isDark) {
-    const goal = 10000;
+  /// Opens an editor sheet allowing the user to change their daily step goal.
+  Future<void> _editStepGoal(
+    BuildContext context,
+    WidgetRef ref,
+    int currentGoal,
+  ) async {
+    final controller = TextEditingController(text: currentGoal.toString());
+    final colorScheme = Theme.of(context).colorScheme;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(sheetContext).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daily Step Goal',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    labelText: 'Steps',
+                    suffixText: 'steps',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: [6000, 8000, 10000, 12000]
+                      .map(
+                        (preset) => ActionChip(
+                          label: Text(_formatNumber(preset)),
+                          onPressed: () =>
+                              controller.text = preset.toString(),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: OrbitColors.copper500,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () {
+                      final parsed = int.tryParse(controller.text);
+                      if (parsed == null || parsed < 1000) return;
+
+                      final currentPrefs = ref
+                              .read(preferencesNotifierProvider).value ??
+                          UserPreferences.defaultValues();
+                      ref
+                          .read(preferencesNotifierProvider.notifier)
+                          .updatePreferences(
+                            currentPrefs.copyWith(stepGoal: parsed),
+                          );
+                      Navigator.of(sheetContext).pop();
+                    },
+                    child: const Text(
+                      'Save Goal',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDailyGoal(
+    BuildContext context,
+    int steps,
+    bool isDark,
+    int stepGoal,
+  ) {
+    final goal = stepGoal > 0 ? stepGoal : 10000;
     final pct = (steps / goal).clamp(0.0, 1.0);
     final pctInt = (pct * 100).toInt();
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return OrbitGlassCard(
+      radius: 22,
+      dark: isDark,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: OrbitShadows.card,
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : OrbitColors.warmGray200.withValues(alpha: 0.2),
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -402,10 +504,13 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
                   color: colorScheme.onSurface,
                 ),
               ),
-              Icon(
-                Icons.edit_outlined,
-                size: 16,
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
+              GestureDetector(
+                onTap: () => _editStepGoal(context, ref, goal),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 16,
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
               ),
             ],
           ),
@@ -883,18 +988,11 @@ class _StatPill extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    return OrbitGlassCard(
+      radius: 18,
+      blur: 14,
+      dark: isDark,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark ? OrbitColors.darkElevated : OrbitColors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: OrbitShadows.card,
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : OrbitColors.warmGray200.withValues(alpha: 0.2),
-        ),
-      ),
       child: Row(
         children: [
           Container(

@@ -56,3 +56,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Photographic feature-card backgrounds (reference-style artwork)
+  assets:
+    - assets/images/

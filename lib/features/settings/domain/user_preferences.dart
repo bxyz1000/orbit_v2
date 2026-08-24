@@ -14,6 +14,10 @@ class UserPreferences {
   late bool plannerSyncEnabled;
   late String language;
 
+  /// Daily step goal used by the Steps page. Defaults to 10,000 for legacy
+  /// records created before this field existed.
+  int stepGoal = 10000;
+
   UserPreferences();
 
   UserPreferences.defaultValues() {
@@ -24,6 +28,7 @@ class UserPreferences {
     aiAssistantEnabled = true;
     plannerSyncEnabled = false;
     language = 'English';
+    stepGoal = 10000;
   }
 
   UserPreferences copyWith({
@@ -34,6 +39,7 @@ class UserPreferences {
     bool? aiAssistantEnabled,
     bool? plannerSyncEnabled,
     String? language,
+    int? stepGoal,
   }) {
     final prefs = UserPreferences()
       ..id = id
@@ -43,7 +49,8 @@ class UserPreferences {
       ..notificationsEnabled = notificationsEnabled ?? this.notificationsEnabled
       ..aiAssistantEnabled = aiAssistantEnabled ?? this.aiAssistantEnabled
       ..plannerSyncEnabled = plannerSyncEnabled ?? this.plannerSyncEnabled
-      ..language = language ?? this.language;
+      ..language = language ?? this.language
+      ..stepGoal = stepGoal ?? this.stepGoal;
     return prefs;
   }
 }

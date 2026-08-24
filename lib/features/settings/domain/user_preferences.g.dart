@@ -37,18 +37,19 @@ const UserPreferencesSchema = CollectionSchema(
       name: r'plannerSyncEnabled',
       type: IsarType.bool,
     ),
+    r'stepGoal': PropertySchema(id: 4, name: r'stepGoal', type: IsarType.long),
     r'themeMode': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'themeMode',
       type: IsarType.string,
     ),
     r'userName': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'userName',
       type: IsarType.string,
     ),
     r'userTagline': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'userTagline',
       type: IsarType.string,
     ),
@@ -92,9 +93,10 @@ void _userPreferencesSerialize(
   writer.writeString(offsets[1], object.language);
   writer.writeBool(offsets[2], object.notificationsEnabled);
   writer.writeBool(offsets[3], object.plannerSyncEnabled);
-  writer.writeString(offsets[4], object.themeMode);
-  writer.writeString(offsets[5], object.userName);
-  writer.writeString(offsets[6], object.userTagline);
+  writer.writeLong(offsets[4], object.stepGoal);
+  writer.writeString(offsets[5], object.themeMode);
+  writer.writeString(offsets[6], object.userName);
+  writer.writeString(offsets[7], object.userTagline);
 }
 
 UserPreferences _userPreferencesDeserialize(
@@ -109,9 +111,10 @@ UserPreferences _userPreferencesDeserialize(
   object.language = reader.readString(offsets[1]);
   object.notificationsEnabled = reader.readBool(offsets[2]);
   object.plannerSyncEnabled = reader.readBool(offsets[3]);
-  object.themeMode = reader.readString(offsets[4]);
-  object.userName = reader.readString(offsets[5]);
-  object.userTagline = reader.readString(offsets[6]);
+  object.stepGoal = reader.readLong(offsets[4]);
+  object.themeMode = reader.readString(offsets[5]);
+  object.userName = reader.readString(offsets[6]);
+  object.userTagline = reader.readString(offsets[7]);
   return object;
 }
 
@@ -131,10 +134,12 @@ P _userPreferencesDeserializeProp<P>(
     case 3:
       return (reader.readBool(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -462,6 +467,61 @@ extension UserPreferencesQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(property: r'plannerSyncEnabled', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterFilterCondition>
+  stepGoalEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'stepGoal', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterFilterCondition>
+  stepGoalGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'stepGoal',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterFilterCondition>
+  stepGoalLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'stepGoal',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterFilterCondition>
+  stepGoalBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'stepGoal',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
@@ -955,6 +1015,20 @@ extension UserPreferencesQuerySortBy
   }
 
   QueryBuilder<UserPreferences, UserPreferences, QAfterSortBy>
+  sortByStepGoal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stepGoal', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterSortBy>
+  sortByStepGoalDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stepGoal', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterSortBy>
   sortByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
@@ -1068,6 +1142,20 @@ extension UserPreferencesQuerySortThenBy
   }
 
   QueryBuilder<UserPreferences, UserPreferences, QAfterSortBy>
+  thenByStepGoal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stepGoal', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterSortBy>
+  thenByStepGoalDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stepGoal', Sort.desc);
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QAfterSortBy>
   thenByThemeMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'themeMode', Sort.asc);
@@ -1142,6 +1230,13 @@ extension UserPreferencesQueryWhereDistinct
   }
 
   QueryBuilder<UserPreferences, UserPreferences, QDistinct>
+  distinctByStepGoal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'stepGoal');
+    });
+  }
+
+  QueryBuilder<UserPreferences, UserPreferences, QDistinct>
   distinctByThemeMode({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'themeMode', caseSensitive: caseSensitive);
@@ -1196,6 +1291,12 @@ extension UserPreferencesQueryProperty
   plannerSyncEnabledProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'plannerSyncEnabled');
+    });
+  }
+
+  QueryBuilder<UserPreferences, int, QQueryOperations> stepGoalProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'stepGoal');
     });
   }
 

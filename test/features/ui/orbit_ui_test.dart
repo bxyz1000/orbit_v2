@@ -196,8 +196,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Strava'), findsOneWidget);
-      expect(find.text('Not Connected'), findsNWidgets(2));
+      // Photo-card anatomy: title/subtitle header + footer tag pill.
+      expect(find.text('Strava Run'), findsOneWidget);
+      expect(find.text('Tap to connect Strava'), findsOneWidget);
+      expect(find.textContaining('Sync'), findsOneWidget);
+      // Health card metric remains plain text when unauthorized.
+      expect(find.text('Not Connected'), findsOneWidget);
     });
   });
 }

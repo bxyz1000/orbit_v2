@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'orbit_colors.dart';
 import 'orbit_spacing.dart';
 import 'orbit_radius.dart';
@@ -19,6 +20,9 @@ class OrbitTheme {
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
+      // Default family for every raw TextStyle that doesn't specify one,
+      // matching the reference design's SF Pro-like type (Inter).
+      fontFamily: GoogleFonts.inter().fontFamily,
       colorScheme: OrbitColors.lightColorScheme,
       textTheme: OrbitTypography.textTheme,
       scaffoldBackgroundColor: OrbitColors.warmWhite,
@@ -67,6 +71,7 @@ class OrbitTheme {
   static ThemeData get dark {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: GoogleFonts.inter().fontFamily,
       colorScheme: OrbitColors.darkColorScheme,
       textTheme: OrbitTypography.textTheme.apply(
         bodyColor: Colors.white,
