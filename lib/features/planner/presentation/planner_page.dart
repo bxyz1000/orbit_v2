@@ -6,6 +6,8 @@ import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_dialogs.dart';
+import '../../../core/theme/orbit_colors.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 import 'widgets/orbit_calendar.dart';
 
 class PlannerPage extends StatefulWidget {
@@ -110,7 +112,7 @@ class _PlannerPageState extends State<PlannerPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: OrbitSpinner(size: 26)));
     }
 
     final theme = Theme.of(context);
@@ -193,7 +195,8 @@ class _PlannerPageState extends State<PlannerPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _addEvent,
         tooltip: 'Add Event',
-        child: const Icon(Icons.add),
+        backgroundColor: OrbitColors.copper500,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

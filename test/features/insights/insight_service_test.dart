@@ -249,6 +249,11 @@ class FakeGoalRepository implements GoalRepository {
   Future<void> saveGoal(Goal goal) async {}
   Future<void> deleteGoal(Goal goal) async {}
   @override
+  Future<List<Goal>> getLongTermGoals() async =>
+      goals.where((g) => g.isLongTerm).toList();
+  @override
+  Future<void> removeGoal(int id) async {}
+  @override
   Stream<void> watchGoals() => Stream.value(null);
 }
 

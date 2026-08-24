@@ -6,6 +6,8 @@ import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_search_bar.dart';
+import '../../../core/theme/orbit_colors.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 
 class NotesPage extends StatefulWidget {
   final NoteRepository noteRepository;
@@ -210,7 +212,7 @@ class _NotesPageState extends State<NotesPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: OrbitSpinner(size: 26)));
     }
 
     final theme = Theme.of(context);
@@ -259,7 +261,8 @@ class _NotesPageState extends State<NotesPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showNoteDialog(),
         tooltip: 'Add Note',
-        child: const Icon(Icons.add),
+        backgroundColor: OrbitColors.copper500,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

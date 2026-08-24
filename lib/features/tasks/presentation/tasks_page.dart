@@ -5,9 +5,12 @@ import '../../../core/theme/orbit_spacing.dart';
 import '../../../core/theme/orbit_radius.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
+import '../../../core/theme/orbit_colors.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_search_bar.dart';
 import '../../../shared/widgets/orbit_dialogs.dart';
+import '../../../core/theme/orbit_motion.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 
 enum TaskFilter { all, active, completed }
 
@@ -70,6 +73,7 @@ class _TasksPageState extends State<TasksPage> {
 
   void _toggleTask(Task task) async {
     final isCompleting = !task.completed;
+    if (isCompleting) OrbitMotion.light();
     final updatedTask = task.copyWith(
       completed: isCompleting,
       completedAt: isCompleting ? DateTime.now() : null,
@@ -86,6 +90,7 @@ class _TasksPageState extends State<TasksPage> {
     try {
       await widget.taskRepository.deleteTask(task.id);
       _loadTasks();
+      OrbitMotion.medium();
 
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
@@ -117,7 +122,7 @@ class _TasksPageState extends State<TasksPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: OrbitSpinner(size: 26)));
     }
 
     final theme = Theme.of(context);
@@ -167,7 +172,8 @@ class _TasksPageState extends State<TasksPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _addTask,
         tooltip: 'Add Task',
-        child: const Icon(Icons.add),
+        backgroundColor: OrbitColors.copper500,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -229,7 +235,10 @@ class _TasksPageState extends State<TasksPage> {
                     label: Text(filter.name[0].toUpperCase() + filter.name.substring(1)),
                     selected: isSelected,
                     onSelected: (selected) {
-                      if (selected) setState(() => _currentFilter = filter);
+                      if (selected) {
+                        OrbitMotion.selection();
+                        setState(() => _currentFilter = filter);
+                      }
                     },
                     showCheckmark: false,
                     shape: const StadiumBorder(),

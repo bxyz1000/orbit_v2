@@ -13,7 +13,7 @@ class OrbitApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: OrbitTheme.light,
       darkTheme: OrbitTheme.dark,
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.system,
       home: const AppShell(),
     );
   }

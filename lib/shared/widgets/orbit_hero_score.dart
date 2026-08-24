@@ -24,8 +24,9 @@ class OrbitHeroScore extends StatefulWidget {
 }
 
 class _OrbitHeroScoreState extends State<OrbitHeroScore>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
+  late AnimationController _auraController;
   late Animation<double> _progressAnim;
   late Animation<int> _scoreAnim;
 
@@ -36,6 +37,11 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
+    // Slow breathing cycle for the ambient copper aura (felt, not seen).
+    _auraController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat(reverse: true);
     _setupAnimations();
     _controller.forward();
   }
@@ -71,6 +77,7 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
   @override
   void dispose() {
     _controller.dispose();
+    _auraController.dispose();
     super.dispose();
   }
 
@@ -93,23 +100,31 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
         ),
         const SizedBox(height: 2),
 
-        // Large hero score number with ambient copper radial glow
+        // Large hero score number with breathing ambient copper radial glow
         Stack(
           alignment: Alignment.center,
           children: [
-            // Focused radial ambient copper glow
-            Container(
-              width: 180,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    OrbitColors.copper500.withValues(alpha: isDark ? 0.28 : 0.20),
-                    OrbitColors.copper500.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
+            // Focused radial ambient copper glow (slow breathing cycle)
+            AnimatedBuilder(
+              animation: _auraController,
+              builder: (context, child) {
+                final t = Curves.easeInOut.transform(_auraController.value);
+                final baseAlpha = isDark ? 0.20 : 0.13;
+                final alpha = baseAlpha + 0.07 * t;
+                return Container(
+                  width: 180,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        OrbitColors.copper500.withValues(alpha: alpha),
+                        OrbitColors.copper500.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
             AnimatedBuilder(
               animation: _controller,
@@ -166,8 +181,8 @@ class _OrbitHeroScoreState extends State<OrbitHeroScore>
                   progress: _progressAnim.value,
                   accentColor: OrbitColors.copper500,
                   trackColor: isDark
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : OrbitColors.warmGray200.withValues(alpha: 0.6),
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : OrbitColors.warmGray200.withValues(alpha: 0.95),
                   isDark: isDark,
                 ),
               ),
@@ -230,7 +245,7 @@ class _ScoreArcGaugePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height * -0.6);
     final radius = size.width * 0.72;
-    const strokeWidth = 2.5;
+    const strokeWidth = 3.0;
     const startAngle = pi * 0.28;
     const totalSweep = pi * 0.44;
 

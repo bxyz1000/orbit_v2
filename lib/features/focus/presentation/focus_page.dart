@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../domain/focus_session.dart';
 import '../data/focus_repository.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../core/theme/orbit_radius.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_stat_card.dart';
@@ -149,7 +149,7 @@ class _FocusPageState extends State<FocusPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading) return const Scaffold(body: Center(child: OrbitSpinner(size: 26)));
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;

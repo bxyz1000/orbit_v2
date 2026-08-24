@@ -7,6 +7,9 @@ import '../../../shared/widgets/orbit_section_header.dart';
 import '../../../shared/widgets/orbit_group_card.dart';
 import '../../../shared/widgets/orbit_info_tile.dart';
 import '../../../shared/widgets/orbit_dialogs.dart';
+import '../../../core/theme/orbit_colors.dart';
+import '../../../core/theme/orbit_motion.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 
 import '../domain/habit_completion.dart';
 
@@ -60,6 +63,7 @@ class _HabitsPageState extends State<HabitsPage> {
 
   void _toggleHabit(Habit habit) async {
     final completed = !habit.completedToday;
+    if (completed) OrbitMotion.light();
     int currentStreak = habit.currentStreak;
     int bestStreak = habit.bestStreak;
 
@@ -92,6 +96,7 @@ class _HabitsPageState extends State<HabitsPage> {
     try {
       await widget.habitRepository.deleteHabit(habit.id);
       _loadHabits();
+      OrbitMotion.medium();
 
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
@@ -120,7 +125,7 @@ class _HabitsPageState extends State<HabitsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading) return const Scaffold(body: Center(child: OrbitSpinner(size: 26)));
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -140,7 +145,8 @@ class _HabitsPageState extends State<HabitsPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _addHabit,
         tooltip: 'Create new habit',
-        child: const Icon(Icons.add),
+        backgroundColor: OrbitColors.copper500,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

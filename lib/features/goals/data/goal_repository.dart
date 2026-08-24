@@ -24,4 +24,14 @@ class GoalRepository {
   }
 
   Stream<void> watchGoals() => _isar.goals.watchLazy();
+
+  Future<List<Goal>> getLongTermGoals() async {
+    return await _isar.goals.filter().isLongTermEqualTo(true).findAll();
+  }
+
+  Future<void> removeGoal(int id) async {
+    await _isar.writeTxn(() async {
+      await _isar.goals.delete(id);
+    });
+  }
 }

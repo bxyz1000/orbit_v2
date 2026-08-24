@@ -7,6 +7,7 @@ import '../../../core/theme/orbit_theme.dart';
 import '../../../shared/widgets/orbit_glass_card.dart';
 import '../../../shared/widgets/orbit_period_selector.dart';
 import '../../../shared/widgets/orbit_activity_grid.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 import '../../../shared/widgets/orbit_insight_card_v2.dart';
 import '../../health/presentation/providers/health_providers.dart';
 import '../../health/presentation/providers/steps_page_providers.dart';
@@ -365,7 +366,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
       },
       loading: () => const SizedBox(
         height: 200,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+        child: Center(child: OrbitSpinner(size: 22, strokeWidth: 1.5)),
       ),
       error: (_, __) => const SizedBox.shrink(),
     );
@@ -693,7 +694,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
       },
       loading: () => const SizedBox(
         height: 180,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+        child: Center(child: OrbitSpinner(size: 22, strokeWidth: 1.5)),
       ),
       error: (_, __) => const SizedBox.shrink(),
     );
@@ -820,7 +821,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
       },
       loading: () => const SizedBox(
         height: 140,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+        child: Center(child: OrbitSpinner(size: 22, strokeWidth: 1.5)),
       ),
       error: (_, __) => const SizedBox.shrink(),
     );
@@ -891,7 +892,7 @@ class _OrbitStepsPageState extends ConsumerState<OrbitStepsPage> {
           },
           loading: () => const SizedBox(
             height: 50,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+            child: Center(child: OrbitSpinner(size: 22, strokeWidth: 1.5)),
           ),
           error: (_, __) => const SizedBox.shrink(),
         ),
@@ -1035,3 +1036,4 @@ class _StatPill extends StatelessWidget {
     );
   }
 }
+

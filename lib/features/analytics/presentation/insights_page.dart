@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_spacing.dart';
+import '../../../shared/widgets/orbit_surface_card.dart';
 import 'providers/analytics_providers.dart';
 import 'widgets/analytics_period_selector.dart';
 import 'widgets/score_overview_card.dart';
@@ -75,7 +76,7 @@ class InsightsPage extends ConsumerWidget {
                   ),
                 ),
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: OrbitSpinner(size: 26)),
               error: (e, st) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(OrbitSpacing.xxl),

@@ -35,7 +35,7 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
 
       expect(find.text('ORBIT SCORE'), findsOneWidget);
       expect(find.text('78'), findsOneWidget);

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/orbit_colors.dart';
 import '../../../core/theme/orbit_spacing.dart';
-import '../../../core/theme/orbit_typography.dart';
-import '../../../core/theme/orbit_gradients.dart';
 import '../../../shared/widgets/orbit_feature_card.dart';
 import '../../../shared/widgets/orbit_card_painters.dart';
 import '../../../shared/providers/repository_providers.dart';
@@ -17,6 +15,7 @@ import '../../notes/presentation/notes_page.dart';
 import '../../planner/presentation/planner_page.dart';
 import '../../habits/presentation/habits_page.dart';
 import '../../focus/presentation/focus_page.dart';
+import '../../goals/presentation/goals_page.dart';
 import '../../tasks/presentation/tasks_page.dart';
 import '../../analytics/presentation/insights_page.dart';
 import '../../profile/presentation/profile_page.dart';
@@ -355,7 +354,7 @@ class OrbitFeatureHubPage extends ConsumerWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const InsightsPage(),
+                        builder: (context) => const GoalsPage(),
                       ),
                     );
                   },
